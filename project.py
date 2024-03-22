@@ -21,7 +21,7 @@ API_KEY = "AUQ0TSPNKF2SX95I"
 
 config = {
     "alpha_vantage": {
-        "key": API_KEY, # you can use the demo API key for this project, but please make sure to get your own API key at https://www.alphavantage.co/support/#api-key
+        "key": API_KEY,
         "symbol": "IBM",
         "outputsize": "full",
         "key_adjusted_close": "5. adjusted close",
