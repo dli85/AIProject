@@ -1,8 +1,9 @@
 import pandas as pd
 import json
 
-file_paths = ['income_statement_AAPL.json', 'income_statement_IBM.json', 'income_statement_TSLA.json',
-              'income_statement_KVYO.json']
+tickers = ['AAPL', 'IBM', 'TSLA', 'KVYO']
+
+file_paths = [f'income_statement_{ticker}.json' for ticker in tickers]
 
 all_data = []
 
