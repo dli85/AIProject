@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
+import math
 
 input_dim = 1
 hidden_dim = 32
@@ -56,7 +58,7 @@ def preprocess(data_df):
     price = data_df.copy()[['Close']]
     price['Close'] = scaler.fit_transform(price['Close'].values.reshape(-1, 1))
 
-    return price
+    return price, scaler
 
 
 def split(stock, lookback=20):
@@ -96,9 +98,7 @@ def train_lstm(x_train, y_train):
     criterion = torch.nn.MSELoss(reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     y_train_lstm = torch.from_numpy(y_train).type(torch.Tensor)
-
     history = np.zeros(num_epochs)
-    lstm = []
     for t in range(num_epochs):
         y_train_pred = model(x_train)
 
@@ -110,15 +110,44 @@ def train_lstm(x_train, y_train):
         loss.backward()
         optimizer.step()
     model.save_model()
-    return model
+    return model, y_train_pred
+
+
+def test_model(model, y_train, y_train_pred, x_test, y_test, scaler):
+    # make predictions
+    x_test = torch.from_numpy(x_test).type(torch.Tensor)
+    # y_test = torch.from_numpy(y_test).type(torch.Tensor)
+    y_test_pred = model(x_test)
+    y_train_lstm = torch.from_numpy(y_train).type(torch.Tensor)
+    y_test_lstm = torch.from_numpy(y_test).type(torch.Tensor)
+    lstm = []
+
+    # invert predictions
+    y_train_pred = scaler.inverse_transform(y_train_pred.detach().numpy())
+    y_train = scaler.inverse_transform(y_train_lstm.detach().numpy())
+    y_test_pred = scaler.inverse_transform(y_test_pred.detach().numpy())
+    y_test = scaler.inverse_transform(y_test_lstm.detach().numpy())
+
+    # calculate root mean squared error
+    trainScore = math.sqrt(mean_squared_error(y_train[:, 0], y_train_pred[:, 0]))
+    print('Train Score: %.2f RMSE' % (trainScore))
+    testScore = math.sqrt(mean_squared_error(y_test[:, 0], y_test_pred[:, 0]))
+    print('Test Score: %.2f RMSE' % (testScore))
+    lstm.append(trainScore)
+    lstm.append(testScore)
+    print("Train score:", trainScore)
+    print("Test score:", testScore)
 
 
 if __name__ == '__main__':
     data_df = load_data('amazon.csv')
-    price = preprocess(data_df)
+    price, scaler = preprocess(data_df)
     x_train, y_train, x_test, y_test = split(price)
     x_train = torch.from_numpy(x_train).type(torch.Tensor)
+
     # y_train = torch.from_numpy(y_train).type(torch.Tensor)
     print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-    model = train_lstm(x_train, y_train)
+    model_lstm, y_train_pred = train_lstm(x_train, y_train)
+    test_model(model_lstm, y_train, y_train_pred, x_test, y_test, scaler)
+
 
