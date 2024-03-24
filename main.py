@@ -14,6 +14,8 @@ num_layers = 2
 output_dim = 1
 num_epochs = 100
 
+device = torch.device("cuda")
+
 sns.set_style("darkgrid")
 
 
@@ -38,7 +40,7 @@ class LSTM(nn.Module):
 
 
 class GRU(nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
+    def __init__(self, input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim):
         super(GRU, self).__init__()
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
@@ -51,6 +53,9 @@ class GRU(nn.Module):
         out, (hn) = self.gru(x, (h0.detach()))
         out = self.fc(out[:, -1, :])
         return out
+
+    def save_model(self, path="gru.pt"):
+        torch.save(self.state_dict(), path)
 
 
 def preprocess(data_df):
@@ -93,8 +98,9 @@ def display(data_df):
     plt.show()
 
 
-def train_lstm(x_train, y_train):
-    model = LSTM()
+def train(x_train, y_train, model):
+    if model is None:
+        model = LSTM()
     criterion = torch.nn.MSELoss(reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     y_train_lstm = torch.from_numpy(y_train).type(torch.Tensor)
@@ -147,7 +153,9 @@ if __name__ == '__main__':
 
     # y_train = torch.from_numpy(y_train).type(torch.Tensor)
     print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-    model_lstm, y_train_pred = train_lstm(x_train, y_train)
-    test_model(model_lstm, y_train, y_train_pred, x_test, y_test, scaler)
+    # model_lstm, y_train_pred = train(x_train, y_train, LSTM())
+    # test_model(model_lstm, y_train, y_train_pred, x_test, y_test, scaler)
+    model_gru, y_train_pred = train(x_train, y_train, GRU())
+    test_model(model_gru, y_train, y_train_pred, x_test, y_test, scaler)
 
 
