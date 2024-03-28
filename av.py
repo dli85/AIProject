@@ -5,6 +5,10 @@ import pandas as pd
 from io import StringIO
 import logging
 import sys
+import os
+
+from dotenv import load_dotenv, dotenv_values
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -18,7 +22,7 @@ BASE_PARAMS = {
     'function': 'TIME_SERIES_INTRADAY',
     'symbol': 'QQQ',
     'interval': '5min',
-    'apikey': 'Q9O1WK5BTAERX17D',
+    'apikey': os.getenv('MY_API_KEY'),
     'outputsize': 'full',
     'datatype': 'csv',
     # 'month': '2024-02'  # Note: 'month' is not a standard API parameter for Alpha Vantage and might be ignored by the API.
