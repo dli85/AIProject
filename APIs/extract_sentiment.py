@@ -24,7 +24,8 @@ BASE_PARAMS = {
     'function': 'NEWS_SENTIMENT',
     'tickers': ticker,
     'apikey': os.getenv('MY_API_KEY'),
-    'sort': "EARLIEST"
+    'sort': "EARLIEST",
+    'limit': 1000
 }
 
 def _check_range_format(range_from, range_to):
@@ -73,7 +74,7 @@ def parse_scores_and_relevance(data):
         target_sentiment_dict = next(filter(lambda x: x["ticker"] == ticker, sentiments))
         article_sentiment_score = target_sentiment_dict["ticker_sentiment_score"]
         article_relevance_score = target_sentiment_dict["relevance_score"]
-        print(article_sentiment_score, article_relevance_score)
+        # print(article_sentiment_score, article_relevance_score)
         ret.append((article_sentiment_score, article_relevance_score))
     
     return ret
@@ -94,5 +95,5 @@ if __name__ == "__main__":
     # get_sentiment_data(ticker, "20210901T0000", "20210930T0000")
     # rd = get_sentiment_data(ticker)
     # parse_scores_and_relevance(rd)
-    res = get_range_data(ticker, "2021-09-01")
+    res = get_range_data(ticker, "2022-09-01")
     pprint(res)
