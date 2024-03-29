@@ -37,9 +37,8 @@ def get_earnings(ticker):
         data = response.json()
         list_dates = []
         for i in range(len(data['quarterlyEarnings'])):
-            return_dict = {}
-            return_dict['fiscalDateEnding'] = data['quarterlyEarnings'][i]['fiscalDateEnding']
-            return_dict['reportedDate'] = data['quarterlyEarnings'][i]['reportedDate']
+            return_dict = {'fiscalDateEnding': data['quarterlyEarnings'][i]['fiscalDateEnding'],
+                           'reportedDate': data['quarterlyEarnings'][i]['reportedDate']}
             list_dates.append(return_dict)
         return list_dates
     else:
