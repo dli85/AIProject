@@ -74,6 +74,9 @@ def parse_scores_and_relevance(data):
         target_sentiment_dict = next(filter(lambda x: x["ticker"] == ticker, sentiments))
         article_sentiment_score = target_sentiment_dict["ticker_sentiment_score"]
         article_relevance_score = target_sentiment_dict["relevance_score"]
+        # convert to floats 
+        article_sentiment_score = float(article_sentiment_score)
+        article_relevance_score = float(article_relevance_score)
         # print(article_sentiment_score, article_relevance_score)
         ret.append((article_sentiment_score, article_relevance_score))
     
@@ -87,13 +90,26 @@ def get_range_data(ticker, range_from=None, range_to=None):
     range_from_query = range_from.replace("-", "") + "T0000" if range_from else None
     range_to_query = range_to.replace("-", "") + "T0000" if range_to else None
     rd = get_sentiment_data(ticker, range_from_query, range_to_query)
+    scores_and_relevance = parse_scores_and_relevance(rd)
 
-    return parse_scores_and_relevance(rd)
+    # weighted average of scores with relevance
+    total_score = 0
+    total_relevance = 0
+    for score, relevance in scores_and_relevance:
+        total_score += score * relevance
+        total_relevance += relevance
+    if total_relevance == 0:
+        return 0
+    
+    return total_score / total_relevance
 
 
 if __name__ == "__main__":
     # get_sentiment_data(ticker, "20210901T0000", "20210930T0000")
     # rd = get_sentiment_data(ticker)
     # parse_scores_and_relevance(rd)
-    res = get_range_data(ticker, "2022-09-01")
-    pprint(res)
+    # res = get_range_data(ticker, "2022-09-01")
+    # pprint(res)
+
+    res = get_range_data(ticker, "2018-09-01", "2018-09-30")
+    print(res)
