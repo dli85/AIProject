@@ -1,13 +1,14 @@
 import time
 import requests
-import requests
 import pandas as pd
 from io import StringIO
 import logging
 import sys
 import os
 
-from dotenv import load_dotenv, dotenv_values
+ticker = 'VOO'
+
+from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ logger.addHandler(stdout_handler)
 BASE_AV_URL = 'https://www.alphavantage.co/query'
 
 BASE_PARAMS = {
-    'function': 'TIME_SERIES_INTRADAY',
+    'function': 'TIME_SERIES_DAILY',
     'symbol': 'QQQ',
     'interval': '5min',
     'apikey': os.getenv('MY_API_KEY'),
@@ -27,6 +28,7 @@ BASE_PARAMS = {
     'datatype': 'csv',
     # 'month': '2024-02'  # Note: 'month' is not a standard API parameter for Alpha Vantage and might be ignored by the API.
 }
+
 
 def _get_all_months(start, end):
     start_year, start_month = map(int, start.split('-'))
@@ -41,6 +43,7 @@ def _get_all_months(start, end):
             months.append(f'{year}-{str(month).zfill(2)}')
     return months
 
+
 def _get_monthly_data(symbol, month):
     logger.info(f"Getting data for {symbol} for month {month}")
     params = BASE_PARAMS.copy()
@@ -52,6 +55,7 @@ def _get_monthly_data(symbol, month):
     logger.info(f"Got data for {symbol} for month {month}")
     return data
 
+
 def get_data(symbol, start, end):
     months = _get_all_months(start, end)
     data = pd.DataFrame()
@@ -59,8 +63,9 @@ def get_data(symbol, start, end):
         data = pd.concat([data, _get_monthly_data(symbol, month)])
     return data
 
+
 if __name__ == "__main__":
-    df = get_data('QQQ', '2024-01', '2024-02')
+    df = get_data('VOO', '2024-01', '2024-02')
     print(df.head())
     df.to_csv(f'qqq_df-{time.time()}.csv', index=False)
 

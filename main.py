@@ -9,6 +9,8 @@ from sklearn.metrics import mean_squared_error
 import math
 
 input_dim = 1
+
+# nodes per layer
 hidden_dim = 32
 num_layers = 2
 output_dim = 1
@@ -31,7 +33,8 @@ class LSTM(nn.Module):
     def forward(self, x):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
-        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
+        # out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
+        out, _ = self.lstm(x, (h0.detach(), c0.detach()))
         out = self.fc(out[:, -1, :])
         return out
 
@@ -146,7 +149,7 @@ def test_model(model, y_train, y_train_pred, x_test, y_test, scaler):
 
 
 if __name__ == '__main__':
-    data_df = load_data('amazon.csv')
+    data_df = load_data('VOO.csv')
     price, scaler = preprocess(data_df)
     x_train, y_train, x_test, y_test = split(price)
     x_train = torch.from_numpy(x_train).type(torch.Tensor)
