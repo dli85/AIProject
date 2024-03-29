@@ -1,7 +1,7 @@
 import json
 import requests
 
-ticker = 'KVYO'
+ticker = 'AAPL'
 key = 'YX89AQX3V3CNVRSK'
 
 url = f'https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol={ticker}&apikey={key}'
