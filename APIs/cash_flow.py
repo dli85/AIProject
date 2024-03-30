@@ -28,6 +28,7 @@ def get_cash_flow(symbol):
         print(f"Failed to fetch data. Status code: {response.status_code}")
         return None
 
+
 if __name__ == "__main__":
     data = get_cash_flow('AAPL')
     if data is not None:

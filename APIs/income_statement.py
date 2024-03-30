@@ -6,6 +6,7 @@ BASE_AV_URL = 'https://www.alphavantage.co/query'
 
 load_dotenv()
 
+
 def get_income_statement(ticker):
 
     return_dict_list = []

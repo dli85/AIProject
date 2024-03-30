@@ -28,6 +28,7 @@ BASE_PARAMS = {
     'limit': 1000
 }
 
+
 def _check_range_format(range_from, range_to):
     # time format is 
     # YYYYMMDDTHHMM
@@ -62,6 +63,7 @@ def get_sentiment_data(ticker, range_from=None, range_to=None):
     logger.info(f"Got data for {ticker}. {len(data['feed'])} articles found.")
     return data
 
+
 def parse_scores_and_relevance(data):
     """
     Returns a list of 2-tuples, each tuple contains the sentiment score and relevance score of an article.
@@ -81,6 +83,7 @@ def parse_scores_and_relevance(data):
         ret.append((article_sentiment_score, article_relevance_score))
     
     return ret
+
 
 def get_range_data(ticker, range_from=None, range_to=None):
     """
