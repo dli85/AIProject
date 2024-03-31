@@ -1,13 +1,7 @@
-import time
 import requests
-import pandas as pd
-from io import StringIO
 import logging
 import sys
 import os
-from pprint import pprint
-
-ticker = 'AAPL'
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,7 +16,7 @@ BASE_AV_URL = 'https://www.alphavantage.co/query'
 
 BASE_PARAMS = {
     'function': 'NEWS_SENTIMENT',
-    'tickers': ticker,
+    'tickers': None,
     'apikey': os.getenv('MY_API_KEY'),
     'sort': "EARLIEST",
     'limit': 1000
@@ -45,7 +39,7 @@ def get_sentiment_data(ticker, range_from=None, range_to=None):
     # if not _check_range_format(range_from, range_to):
     #     raise ValueError("Time format is incorrect")
     
-    logger.info(f"Getting data for {ticker}")
+    # logger.info(f"Getting data for {ticker}")
     params = BASE_PARAMS.copy()
     params['tickers'] = ticker
 
@@ -56,15 +50,20 @@ def get_sentiment_data(ticker, range_from=None, range_to=None):
 
     response = requests.get(BASE_AV_URL, params=params)
     data = response.json()
-    with open("sentiment_data.json", "w") as f:
-        f.write(response.text)
+    # if verbose:
+    #     with open("sentiment_data.json", "w") as f:
+    #         f.write(response.text)
 
     # pprint(data)
-    logger.info(f"Got data for {ticker}. {len(data['feed'])} articles found.")
-    return data
+    try:
+        temp = len(data['feed'])
+        # logger.info(f"Got data for {ticker}. {len(data['feed'])} articles found.")
+        return data
+    except KeyError:
+        return {'feed': []}
 
 
-def parse_scores_and_relevance(data):
+def parse_scores_and_relevance(data, ticker):
     """
     Returns a list of 2-tuples, each tuple contains the sentiment score and relevance score of an article.
     """
@@ -93,7 +92,7 @@ def get_range_data(ticker, range_from=None, range_to=None):
     range_from_query = range_from.replace("-", "") + "T0000" if range_from else None
     range_to_query = range_to.replace("-", "") + "T0000" if range_to else None
     rd = get_sentiment_data(ticker, range_from_query, range_to_query)
-    scores_and_relevance = parse_scores_and_relevance(rd)
+    scores_and_relevance = parse_scores_and_relevance(rd, ticker)
 
     # weighted average of scores with relevance
     total_score = 0
@@ -113,6 +112,6 @@ if __name__ == "__main__":
     # parse_scores_and_relevance(rd)
     # res = get_range_data(ticker, "2022-09-01")
     # pprint(res)
-
-    res = get_range_data(ticker, "2018-09-01", "2018-09-30")
+    # res = get_range_data('META', "2021-09-30", "2021-12-31")
+    res = get_range_data('NVDA', "2022-12-31", "2023-03-31")
     print(res)
