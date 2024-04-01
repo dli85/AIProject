@@ -9,7 +9,7 @@ BASE_AV_URL = 'https://www.alphavantage.co/query'
 load_dotenv()
 
 
-def within_x_days(date1_str, date2_str, x=10):
+def within_x_days(date1_str, date2_str, x=15):
     date1 = date.fromisoformat(date1_str)
     date2 = date.fromisoformat(date2_str)
 
@@ -89,7 +89,13 @@ def get_adjusted_price_at_date(fiscal_end_date, earnings_dates, adjusted_prices)
         if reported_date in adjusted_prices:
             return adjusted_prices[reported_date]['5. adjusted close']
 
-    raise Exception("No adjusted closing prices for reported date, and backups failed")
+    reported_date = reported_date_copy
+
+    for i in range(5):
+        reported_date = decrement_date(reported_date)
+        if reported_date in adjusted_prices:
+            return adjusted_prices[reported_date]['5. adjusted close']
+    raise Exception("No adjusted closing prices for reported date, and backups failed " + reported_date)
 
 
 # Returns the corresponding reported date
@@ -98,7 +104,7 @@ def match_fiscal_date_ending(date, earnings_dates):
         if within_x_days(date, earning_date['fiscalDateEnding']):
             return earning_date['reportedDate']
 
-    raise Exception("fiscal end date match not found")
+    raise RuntimeError("fiscal end date match not found")
 
 
 def get_close_price(date, ticker):
@@ -151,8 +157,22 @@ def get_earnings(ticker):
         return None
 
 
+def get_all_adjusted_prices(ticker):
+    prices = get_adjusted_prices_complete_json(ticker, True)
+
+    result = []
+
+    for date in prices:
+        result.append((date, prices[date]["5. adjusted close"]))
+
+    print(result)
+
+    return result
+
+
 if __name__ == "__main__":
     # print(get_earnings('2023-12-31', 'AAPL'))
     # print(get_close_price('2023-12-31', 'AAPL'))
     # print(get_earning_dates('NVDA'))
-    print(get_adjusted_prices_complete_json('NVDA', True))
+    # print(get_adjusted_prices_complete_json('NVDA', True))
+    get_all_adjusted_prices('AAPL')

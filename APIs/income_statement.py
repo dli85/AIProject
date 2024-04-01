@@ -7,7 +7,7 @@ BASE_AV_URL = 'https://www.alphavantage.co/query'
 load_dotenv()
 
 
-def get_quarterly_reports(ticker):
+def get_quarterly_income_statements(ticker):
     params = {
         'function': 'INCOME_STATEMENT',
         'symbol': ticker,
@@ -24,7 +24,7 @@ def get_income_statement(ticker):
 
     return_dict_list = []
 
-    quarterly_reports = get_quarterly_reports(ticker)
+    quarterly_reports = get_quarterly_income_statements(ticker)
 
     for i in range(len(quarterly_reports)):
         return_dict = {}
@@ -42,7 +42,7 @@ def get_income_statement(ticker):
 def get_income_statement_ratios(ticker):
     result = []
 
-    quarterly_reports = get_quarterly_reports(ticker)
+    quarterly_reports = get_quarterly_income_statements(ticker)
 
     print(quarterly_reports[0])
 

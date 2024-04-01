@@ -1,0 +1,79 @@
+{
+    "NXT": [
+        {
+            "fiscalDateEnding": "2023-12-31",
+            "totalCurrentAssets": "1418960000",
+            "cashAndShortTermInvestments": "367818000",
+            "totalCurrentLiabilities": "759437000",
+            "currentDebt": "None",
+            "netIncome": "41396000",
+            "capitalExpenditures": "2444000",
+            "operatingCashflow": "64804000",
+            "grossProfit": "209725000",
+            "totalRevenue": "710426000",
+            "sentiment": 0,
+            "surprise": "0.48",
+            "closePrice": "45.27"
+        },
+        {
+            "fiscalDateEnding": "2023-09-30",
+            "totalCurrentAssets": "1338780000",
+            "cashAndShortTermInvestments": "372918000",
+            "totalCurrentLiabilities": "772210000",
+            "currentDebt": "None",
+            "netIncome": "39253000",
+            "capitalExpenditures": "712000",
+            "operatingCashflow": "26910000",
+            "grossProfit": "149110000",
+            "totalRevenue": "573357000",
+            "sentiment": 0,
+            "surprise": "0.29",
+            "closePrice": "37.06"
+        },
+        {
+            "fiscalDateEnding": "2023-06-30",
+            "totalCurrentAssets": "1116806000",
+            "cashAndShortTermInvestments": "355081000",
+            "totalCurrentLiabilities": "676138000",
+            "currentDebt": "None",
+            "netIncome": "20429000",
+            "capitalExpenditures": "694000",
+            "operatingCashflow": "225767000",
+            "grossProfit": "113744000",
+            "totalRevenue": "479543000",
+            "sentiment": 0,
+            "surprise": "0.19",
+            "closePrice": "39.31"
+        },
+        {
+            "fiscalDateEnding": "2023-03-31",
+            "totalCurrentAssets": "872265000",
+            "cashAndShortTermInvestments": "130008000",
+            "totalCurrentLiabilities": "507426000",
+            "currentDebt": "None",
+            "netIncome": "-92660000",
+            "capitalExpenditures": "530000",
+            "operatingCashflow": "35287000",
+            "grossProfit": "90312000",
+            "totalRevenue": "518395000",
+            "sentiment": 0,
+            "surprise": "0.07",
+            "closePrice": "33.23"
+        },
+        {
+            "fiscalDateEnding": "2022-12-31",
+            "totalCurrentAssets": "954337000",
+            "cashAndShortTermInvestments": "100081000",
+            "totalCurrentLiabilities": "604612000",
+            "currentDebt": "None",
+            "netIncome": "0",
+            "capitalExpenditures": "1318000",
+            "operatingCashflow": "19921000",
+            "grossProfit": "82259000",
+            "totalRevenue": "513370000",
+            "sentiment": 0,
+            "surprise": "0.09",
+            "closePrice": "31.01"
+        }
+    ]
+}

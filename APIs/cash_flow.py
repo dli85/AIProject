@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_quarterly_reports(ticker):
+def get_quarterly_cash_flows(ticker):
     BASE_AV_URL = 'https://www.alphavantage.co/query'
 
     params = {
@@ -22,7 +22,7 @@ def get_quarterly_reports(ticker):
 def get_cash_flow(ticker):
     return_dict_list = []
     
-    quarterly_reports = get_quarterly_reports(ticker)
+    quarterly_reports = get_quarterly_cash_flows(ticker)
 
     for i in range(len(quarterly_reports)):
         return_dict = {'fiscalDateEnding': quarterly_reports[i]['fiscalDateEnding'],
@@ -35,7 +35,7 @@ def get_cash_flow(ticker):
 
 # TODO NEED TO FINISH
 def get_cash_flow_ratios(ticker, ):
-    quarterly_reports = get_quarterly_reports(ticker)
+    quarterly_reports = get_quarterly_cash_flows(ticker)
 
     print(quarterly_reports[0])
 

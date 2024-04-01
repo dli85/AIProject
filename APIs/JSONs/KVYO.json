@@ -1,0 +1,34 @@
+{
+    "KVYO": [
+        {
+            "fiscalDateEnding": "2023-12-31",
+            "totalCurrentAssets": "803489000",
+            "cashAndShortTermInvestments": "738562000",
+            "totalCurrentLiabilities": "130616000",
+            "currentDebt": "None",
+            "netIncome": "-26295000",
+            "capitalExpenditures": "3923000",
+            "operatingCashflow": "38644000",
+            "grossProfit": "156605000",
+            "totalRevenue": "201612000",
+            "sentiment": 0,
+            "surprise": "0.01",
+            "closePrice": "29.08"
+        },
+        {
+            "fiscalDateEnding": "2023-09-30",
+            "totalCurrentAssets": "781352000",
+            "cashAndShortTermInvestments": "723415000",
+            "totalCurrentLiabilities": "119655000",
+            "currentDebt": "None",
+            "netIncome": "-297104000",
+            "capitalExpenditures": "1830000",
+            "operatingCashflow": "-297104000",
+            "grossProfit": "116982000",
+            "totalRevenue": "175807000",
+            "sentiment": 0,
+            "surprise": "0.05",
+            "closePrice": "32.51"
+        }
+    ]
+}

@@ -1,20 +1,24 @@
 import json
 
-from balance_sheets import get_balance_sheets
-from cash_flow import get_cash_flow
-from income_statement import get_income_statement
+from balance_sheets import get_balance_sheets, get_quarterly_balance_sheets
+from cash_flow import get_cash_flow, get_quarterly_cash_flows
+from income_statement import get_income_statement, get_quarterly_income_statements
 from extract_sentiment import get_range_data
 from close_price import *
 from tqdm import tqdm
-from constants import tech_ticker_list
+from constants import tech_ticker_list, top_500_ticker_list
 
-JSON_PATH = './JSONs'
+JSON_PATH = 'CompleteT500JSONs'
 
 
 def combiner(ticker):
-    balance_sheets = get_balance_sheets(ticker)
-    cash_flow = get_cash_flow(ticker)
-    income_statement = get_income_statement(ticker)
+    # balance_sheets = get_balance_sheets(ticker)
+    # cash_flow = get_cash_flow(ticker)
+    # income_statement = get_income_statement(ticker)
+
+    balance_sheets = get_quarterly_balance_sheets(ticker)
+    cash_flow = get_quarterly_cash_flows(ticker)
+    income_statement = get_quarterly_income_statements(ticker)
 
     rows = []
 
@@ -22,8 +26,9 @@ def combiner(ticker):
     earnings_reported_date_mapping = get_earnings(ticker)
 
     for i in tqdm(range(min(len(balance_sheets), len(cash_flow), len(income_statement)))):
+
         if not balance_sheets[i]['fiscalDateEnding'] == cash_flow[i]['fiscalDateEnding'] == income_statement[i]['fiscalDateEnding']:
-            raise Exception(f'Expected entries for balance_sheets, cash_flow, '
+            raise ValueError(f'Expected entries for balance_sheets, cash_flow, '
                             f' and income statements to have the same fiscal ending date: \n'
                             f'balance sheet: {balance_sheets[i]["fiscalDateEnding"]}, '
                             f'cash_flow: {cash_flow[i]["fiscalDateEnding"]}, '
@@ -72,12 +77,33 @@ def save_rows(ticker, rows):
 
 
 if __name__ == '__main__':
-    for i in range(len(tech_ticker_list)):
-        ticker = tech_ticker_list[i]
-        if os.path.exists(f"{JSON_PATH}/{ticker}.json"):
+    ticker_list = top_500_ticker_list
+
+    skips = ['CRM', 'ADBE', 'CSCO', 'QCOM', 'MU', 'SONY', 'SHOP', 'ADI',]
+    dates_not_matching_skipped = []
+    no_matching_earning_reported_date_skipped = []
+    others = []
+    for i in range(len(ticker_list)):
+        ticker = ticker_list[i]
+        if os.path.exists(f"{JSON_PATH}/{ticker}.json") or ticker in skips:
             continue
 
         print("working on", ticker)
-        combiner(ticker)
-        print(f"Completed {i + 1}/{len(tech_ticker_list)}")
+        try:
+            combiner(ticker)
+        except ValueError:
+            print(f"Skipped: {ticker} due to non-consecutive balance sheet, etc.")
+            dates_not_matching_skipped.append(ticker)
+        except RuntimeError:
+            print(f"Skipped: {ticker} due due to no found earnings reported date.")
+            no_matching_earning_reported_date_skipped.append(ticker)
+        except Exception as e:
+            print(f"Skipped: {ticker} due due to {e})")
+            others.append(ticker)
+
+        print(f"Completed {i + 1}/{len(ticker_list)}")
+    print("Non consecutive earning reports skipped: " + str(dates_not_matching_skipped))
+    print("No earning reported dates found: " + str(no_matching_earning_reported_date_skipped))
+    print("Others " + str(others))
+    print(f"Total skipped: {len(dates_not_matching_skipped) + len(no_matching_earning_reported_date_skipped) + len(others)}")
     # combiner('NVDA')
