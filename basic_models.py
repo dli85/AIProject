@@ -67,6 +67,7 @@ class GRU(nn.Module):
 
 def get_data_frame(ticker):
     data = get_all_adjusted_prices(ticker)
+    dates = [x[1] for x in data]
 
     df = pd.DataFrame(data, columns=["Date", "Close"])
     # dates = df["Date"].values
@@ -74,7 +75,7 @@ def get_data_frame(ticker):
     df["Close"] = df["Close"].astype(float)
     df = df.set_index("Date")
 
-    return df
+    return df, dates
 
 
 def preprocess(df):
@@ -105,12 +106,12 @@ def split(stock):
     print(y_train)
     print(y_test)
 
-    plt.plot(y_train, color='blue', marker='*', linestyle='--')
-    plt.xlabel("Index")
-    plt.ylabel("Values")
-    plt.title("Data Plot")
-    plt.grid(True)
-    plt.show()
+    # plt.plot(y_train, color='blue', marker='*', linestyle='--')
+    # plt.xlabel("Index")
+    # plt.ylabel("Values")
+    # plt.title("Data Plot")
+    # plt.grid(True)
+    # plt.show()
 
     return [x_train, y_train, x_test, y_test]
 
@@ -133,30 +134,7 @@ def train(model, x_train, y_train):
 
     model.save_model()
 
-    # predict = pd.DataFrame(scaler.inverse_transform(prediction.detach().numpy()))
-    # original = pd.DataFrame(scaler.inverse_transform(y_train.detach().numpy()))
-    #
-    # fig = plt.figure()
-    # fig.subplots_adjust(hspace=0.2, wspace=0.2)
-    #
-    # plt.subplot(1, 2, 1)
-    # ax = sns.lineplot(x=original.index, y=original[0], label="Data", color='royalblue')
-    # ax = sns.lineplot(x=predict.index, y=predict[0], label="Training Prediction (LSTM)", color='tomato')
-    # ax.set_title('Stock price', size=14, fontweight='bold')
-    # ax.set_xlabel("Days", size=14)
-    # ax.set_ylabel("Cost (USD)", size=14)
-    # ax.set_xticklabels('', size=10)
-    #
-    # plt.subplot(1, 2, 2)
-    # ax = sns.lineplot(data=history, color='royalblue')
-    # ax.set_xlabel("Epoch", size=14)
-    # ax.set_ylabel("Loss", size=14)
-    # ax.set_title("Training Loss", size=14, fontweight='bold')
-    # fig.set_figheight(6)
-    # fig.set_figwidth(16)
-
-
-    return model, prediction
+    return model, prediction, history
 
 
 def eval_model(model, y_train, train_predictions, x_test, y_test, scaler):
@@ -164,7 +142,6 @@ def eval_model(model, y_train, train_predictions, x_test, y_test, scaler):
     testing_predictions = model(x_test)
     y_train = torch.from_numpy(y_train).type(torch.Tensor)
     y_test = torch.from_numpy(y_test).type(torch.Tensor)
-
 
     sns.set_style("darkgrid")
 
@@ -177,19 +154,21 @@ def eval_model(model, y_train, train_predictions, x_test, y_test, scaler):
     print(y_test)
     print(type(y_test))
 
-    plot_results(y_train, y_test, train_predictions, testing_predictions)
+    return y_train, y_test, train_predictions, testing_predictions
 
 
-def plot_results(y_train, y_test, train_predictions, testing_predictions):
+def plot_results(y_train, y_test, train_predictions, testing_predictions, history, dates):
     df = pd.DataFrame({'Actual': np.concatenate((y_train.flatten(), y_test.flatten())),  # Concatenate
                        'Predicted': np.concatenate((train_predictions.flatten(), testing_predictions.flatten()))})
 
-    split_index =  int(training_split * (len(train_predictions) + len(testing_predictions)))
-
+    split_index = int(training_split * (len(train_predictions) + len(testing_predictions)))
     predicted_1 = df['Predicted'].iloc[:split_index]
     predicted_2 = df['Predicted'].iloc[split_index:]
 
+    fig = plt.figure()
     sns.set_style("darkgrid")
+    plt.subplot(1, 2, 1)
+    fig.subplots_adjust(hspace=0.2, wspace=0.2)
     sns.lineplot(data=df, x=df.index, y='Actual', label='Actual')
     sns.lineplot(x=predicted_1.index, y=predicted_1, label='Predicted Training', color='blue')
     sns.lineplot(x=predicted_2.index, y=predicted_2, label='Predicted Testing', color='red')
@@ -198,52 +177,54 @@ def plot_results(y_train, y_test, train_predictions, testing_predictions):
     plt.ylabel("Stock Price")
     plt.title("Stock Price Predictions")
     plt.legend()
-    plt.show()
 
-
-    # fig.subplots_adjust(hspace=0.2, wspace=0.2)
-    #
-    # plt.subplot(1, 2, 1)
-    # ax = sns.lineplot(y=y_train, label="Data", color='royalblue')
-    # ax = sns.lineplot(y=train_predictions, label="Training Prediction (LSTM)", color='tomato')
-    # ax.set_title('Stock price', size=14, fontweight='bold')
-    # ax.set_xlabel("Days", size=14)
-    # ax.set_ylabel("Cost (USD)", size=14)
-    # ax.set_xticklabels('', size=10)
-    #
-    # plt.subplot(1, 2, 2)
-    # ax = sns.lineplot(data=history, color='royalblue')
-    # ax.set_xlabel("Epoch", size=14)
-    # ax.set_ylabel("Loss", size=14)
-    # ax.set_title("Training Loss", size=14, fontweight='bold')
-    # fig.set_figheight(6)
-    # fig.set_figwidth(16)
+    plt.subplot(1, 2, 2)
+    ax = sns.lineplot(data=history, color='royalblue')
+    ax.set_xlabel("Epoch", size=14)
+    ax.set_ylabel("Loss", size=14)
+    ax.set_title("Training Loss", size=14, fontweight='bold')
+    fig.set_figheight(6)
+    fig.set_figwidth(16)
 
     plt.show()
 
 
-    # plt.figure()
-    # plt.plot(y_train, label='Actual')
-    # plt.plot(train_predictions, label='Predicted')
-    # plt.xlabel('Time step')
-    # plt.ylabel('Price')
-    # plt.title('Training')
-    # plt.legend()
-    #
-    # plt.figure()
-    # plt.plot(y_test, label='Actual')
-    # plt.plot(testing_predictions, label='Predicted')
-    # plt.xlabel('Time step')
-    # plt.ylabel('Price')
-    # plt.title('Testing')
-    # plt.legend()
-    # plt.show()
-    #
-    # plt.show()
+# def predict_next_30_days(model, y_test, scaler, sequence_length):
+#     """
+#     Predicts the stock prices for the next 30 days.
+#
+#     Args:
+#         model (nn.Module): The trained LSTM or GRU model.
+#         y_test (np.ndarray): The most recent 20% of close prices (used as starting point).
+#         scaler (MinMaxScaler): The scaler used for preprocessing.
+#         sequence_length (int): The sequence length used in model training
+#
+#     Returns:
+#         list: A list of predicted stock prices for the next 30 days.
+#     """
+#
+#     predictions = []
+#     current_batch = y_test[-sequence_length:]  # Last sequence_length prices from y_test
+#     current_batch = scaler.transform(current_batch.reshape(-1, 1))  # Scale
+#
+#     for i in range(30):  # Predict the next 30 days
+#         current_batch = torch.from_numpy(current_batch).type(torch.Tensor).to(device)
+#         output = model(current_batch)
+#         prediction = scaler.inverse_transform(output.cpu().detach().numpy())
+#         predictions.append(prediction[0, 0])
+#
+#         # Add the prediction to the input and remove the oldest value:
+#         current_batch = np.append(current_batch, prediction).reshape(-1, 1)  # Reshape directly
+#         current_batch = current_batch[1:]  # Remove oldest value
+#         current_batch = scaler.transform(current_batch)
+#
+#     print(predictions)
+#
+#     return predictions
 
 
 if __name__ == '__main__':
-    df_date_close = get_data_frame('AAPL')
+    df_date_close, dates = get_data_frame('AAPL')
 
     prices, scaler = preprocess(df_date_close)
     x_train, y_train, x_test, y_test = split(prices)
@@ -252,7 +233,9 @@ if __name__ == '__main__':
     y_train_gru = torch.from_numpy(y_train).type(torch.Tensor)
     y_test_gru = torch.from_numpy(y_test).type(torch.Tensor)
 
-
-    model, training_prediction = train(GRU(), x_train, y_train)
-    eval_model(model, y_train, training_prediction, x_test, y_test, scaler)
+    model, training_prediction, history, = train(GRU(), x_train, y_train)
+    y_train, y_test, train_predictions, testing_predictions = \
+        eval_model(model, y_train, training_prediction, x_test, y_test, scaler)
+    plot_results(y_train, y_test, train_predictions, testing_predictions, history, dates)
+    # predict_next_30_days(model, y_test, scaler, sequence_length)
     # print(x_train)
