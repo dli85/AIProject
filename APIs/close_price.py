@@ -158,7 +158,7 @@ def get_earnings(ticker):
 
 
 def get_all_adjusted_prices(ticker):
-    prices = get_adjusted_prices_complete_json(ticker, True)
+    prices = get_adjusted_prices_complete_json(ticker, False)
 
     result = []
 

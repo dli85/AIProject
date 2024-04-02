@@ -103,15 +103,15 @@ def split(stock):
     x_test = data[train_set_size:, :-1]
     y_test = data[train_set_size:, -1, :]
 
-    print(y_train)
-    print(y_test)
+    # x_train[i] = some sequence of prices
+    # y_train[i] = the next price
 
-    # plt.plot(y_train, color='blue', marker='*', linestyle='--')
-    # plt.xlabel("Index")
-    # plt.ylabel("Values")
-    # plt.title("Data Plot")
-    # plt.grid(True)
-    # plt.show()
+    plt.plot(y_train, color='blue', marker='*', linestyle='--')
+    plt.xlabel("Index")
+    plt.ylabel("Values")
+    plt.title("Data Plot")
+    plt.grid(True)
+    plt.show()
 
     return [x_train, y_train, x_test, y_test]
 
@@ -151,9 +151,6 @@ def eval_model(model, y_train, train_predictions, x_test, y_test, scaler):
     testing_predictions = scaler.inverse_transform(testing_predictions.detach().numpy())
     y_test = scaler.inverse_transform(y_test.detach().numpy())
 
-    print(y_test)
-    print(type(y_test))
-
     return y_train, y_test, train_predictions, testing_predictions
 
 
@@ -189,53 +186,72 @@ def plot_results(y_train, y_test, train_predictions, testing_predictions, histor
     plt.show()
 
 
-# def predict_next_30_days(model, y_test, scaler, sequence_length):
-#     """
-#     Predicts the stock prices for the next 30 days.
-#
-#     Args:
-#         model (nn.Module): The trained LSTM or GRU model.
-#         y_test (np.ndarray): The most recent 20% of close prices (used as starting point).
-#         scaler (MinMaxScaler): The scaler used for preprocessing.
-#         sequence_length (int): The sequence length used in model training
-#
-#     Returns:
-#         list: A list of predicted stock prices for the next 30 days.
-#     """
-#
-#     predictions = []
-#     current_batch = y_test[-sequence_length:]  # Last sequence_length prices from y_test
-#     current_batch = scaler.transform(current_batch.reshape(-1, 1))  # Scale
-#
-#     for i in range(30):  # Predict the next 30 days
-#         current_batch = torch.from_numpy(current_batch).type(torch.Tensor).to(device)
-#         output = model(current_batch)
-#         prediction = scaler.inverse_transform(output.cpu().detach().numpy())
-#         predictions.append(prediction[0, 0])
-#
-#         # Add the prediction to the input and remove the oldest value:
-#         current_batch = np.append(current_batch, prediction).reshape(-1, 1)  # Reshape directly
-#         current_batch = current_batch[1:]  # Remove oldest value
-#         current_batch = scaler.transform(current_batch)
-#
-#     print(predictions)
-#
-#     return predictions
+def predict_next_n_days(model, n, x_test, y_test, scaler, sequence_length):
+    """
+    Predicts the stock prices for the next 30 days.
+
+    Args:
+        model (nn.Module): The trained LSTM or GRU model.
+        y_test (np.ndarray): The most recent 20% of close prices (used as starting point).
+        scaler (MinMaxScaler): The scaler used for preprocessing.
+        sequence_length (int): The sequence length used in model training
+
+    Returns:
+        list: A list of predicted stock prices for the next 30 days.
+    """
+
+    def shift(arr, new_elem):
+        """
+        Modifies a NumPy array by removing the first element and adding 1 to the end.
+
+        Args:
+            arr: A NumPy array with the specified shape.
+
+        Returns:
+            A new NumPy array with the modifications.
+        """
+        modified_arr = [arr[0][1:]]
+        # Create a new array to hold the element to be added
+        new_element = np.array([new_elem])
+        # Combine the arrays (concatenate along the correct axis)
+        modified_arr[0] = np.concatenate((modified_arr[0], new_element), axis=0)
+
+        return modified_arr
+
+    # create the window
+    # window = most recent sequence of prices
+    x_test = x_test.numpy()
+    window = [x_test[-1]]
+    window = shift(window, y_test[-1])
+
+    predictions = []
+
+    for i in range(n):  # Predict the next n days
+        window_tensors = torch.from_numpy(np.array(window)).type(torch.Tensor)
+        next_prediction = model(window_tensors)
+        predicted_val = next_prediction[0][0].detach().numpy()
+        window = shift(window, [predicted_val])
+
+        predictions.append(predicted_val.item())
+
+    print(predictions)
+
+    return predictions
 
 
 if __name__ == '__main__':
-    df_date_close, dates = get_data_frame('AAPL')
+    df_date_close, dates = get_data_frame('INTC')
 
     prices, scaler = preprocess(df_date_close)
     x_train, y_train, x_test, y_test = split(prices)
+
+    y_test_copy = np.copy(y_test)
+
     x_train = torch.from_numpy(x_train).type(torch.Tensor)
     x_test = torch.from_numpy(x_test).type(torch.Tensor)
-    y_train_gru = torch.from_numpy(y_train).type(torch.Tensor)
-    y_test_gru = torch.from_numpy(y_test).type(torch.Tensor)
 
     model, training_prediction, history, = train(GRU(), x_train, y_train)
     y_train, y_test, train_predictions, testing_predictions = \
         eval_model(model, y_train, training_prediction, x_test, y_test, scaler)
     plot_results(y_train, y_test, train_predictions, testing_predictions, history, dates)
-    # predict_next_30_days(model, y_test, scaler, sequence_length)
-    # print(x_train)
+    predict_next_n_days(model, 30, x_test, y_test_copy, scaler, sequence_length)
