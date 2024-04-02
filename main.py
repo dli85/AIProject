@@ -146,7 +146,9 @@ def test_model(model, y_train, y_train_pred, x_test, y_test, scaler):
     lstm.append(testScore)
     print("Train score:", trainScore)
     print("Test score:", testScore)
-
+    plt.figure()
+    plt.plot()
+    plt.show()
 
 if __name__ == '__main__':
     data_df = load_data('VOO.csv')
@@ -156,9 +158,9 @@ if __name__ == '__main__':
 
     # y_train = torch.from_numpy(y_train).type(torch.Tensor)
     print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-    # model_lstm, y_train_pred = train(x_train, y_train, LSTM())
-    # test_model(model_lstm, y_train, y_train_pred, x_test, y_test, scaler)
-    model_gru, y_train_pred = train(x_train, y_train, GRU())
-    test_model(model_gru, y_train, y_train_pred, x_test, y_test, scaler)
+    model_lstm, y_train_pred = train(x_train, y_train, LSTM())
+    test_model(model_lstm, y_train, y_train_pred, x_test, y_test, scaler)
+    # model_gru, y_train_pred = train(x_train, y_train, GRU())
+    # test_model(model_gru, y_train, y_train_pred, x_test, y_test, scaler)
 
 
