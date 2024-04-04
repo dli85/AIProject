@@ -108,12 +108,12 @@ def split(stock):
     # x_train[i] = some sequence of prices
     # y_train[i] = the next price
 
-    # plt.plot(y_train, color='blue', marker='*', linestyle='--')
-    # plt.xlabel("Index")
-    # plt.ylabel("Values")
-    # plt.title("Data Plot")
-    # plt.grid(True)
-    # plt.show()
+    plt.plot(y_train, color='blue', marker='*', linestyle='--')
+    plt.xlabel("Index")
+    plt.ylabel("Values")
+    plt.title("Data Plot")
+    plt.grid(True)
+    plt.show()
 
     return [x_train, y_train, x_test, y_test]
 
@@ -264,7 +264,7 @@ def predict_next_n_days(model, n, x_test, y_test, scaler, sequence_length):
 
 
 if __name__ == '__main__':
-    df_date_close, dates = get_data_frame('AAPL')
+    df_date_close, dates = get_data_frame('NVDA')
 
     prices, scaler = preprocess(df_date_close)
     x_train, y_train, x_test, y_test = split(prices)

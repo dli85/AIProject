@@ -87,4 +87,6 @@ def get_all_ratios(jsons_path='./APIs/CompleteTechJSONs/'):
 
 if __name__ == '__main__':
     print(get_all_ratios()['AAPL'])
+    print(get_all_ratios()['AAPL']['2023-12-31'])
+    print(get_all_ratios()['AAPL']['2023-09-30'])
 
