@@ -1,3 +1,5 @@
+import math
+
 import pandas as pd
 from APIs.close_price import get_all_adjusted_prices
 from sklearn.preprocessing import MinMaxScaler
@@ -137,7 +139,7 @@ def train(model, x_train, y_train):
     return model, prediction, history
 
 
-def eval_model(model, y_train, train_predictions, x_test, y_test, scaler):
+def eval_model(model, y_train, train_predictions, x_test, y_test, scaler, model_type):
     # x_test = torch.from_numpy(x_test).type(torch.Tensor)
     testing_predictions = model(x_test)
     y_train = torch.from_numpy(y_train).type(torch.Tensor)
@@ -150,6 +152,12 @@ def eval_model(model, y_train, train_predictions, x_test, y_test, scaler):
     y_train = scaler.inverse_transform(y_train.detach().numpy())
     testing_predictions = scaler.inverse_transform(testing_predictions.detach().numpy())
     y_test = scaler.inverse_transform(y_test.detach().numpy())
+
+    train_mse = math.sqrt(mean_squared_error(y_train[:, 0], train_predictions[:, 0]))
+    test_mse = math.sqrt(mean_squared_error(y_test[:, 0], testing_predictions[:, 0]))
+    print(y_train, train_predictions)
+    print(f"Training Mean squared error for {model_type}: {train_mse}")
+    print(f"Testing Mean squared error for {model_type}: {test_mse}")
 
     return y_train, y_test, train_predictions, testing_predictions
 
@@ -168,9 +176,10 @@ def plot_results(y_train, y_test, lstm_training_predictions, lstm_testing_predic
     predicted_2 = df['Predicted'].iloc[split_index:]
 
     fig = plt.figure()
+
     sns.set_style("darkgrid")
     plt.subplot(2, 2, 1)
-    fig.subplots_adjust(hspace=0.2, wspace=0.2)
+    fig.subplots_adjust(hspace=0.4, wspace=0.2)
     sns.lineplot(data=df, x=df.index, y='Actual', label='Actual')
     sns.lineplot(x=predicted_1.index, y=predicted_1, label='Predicted Training', color='blue')
     sns.lineplot(x=predicted_2.index, y=predicted_2, label='Predicted Testing', color='red')
@@ -185,8 +194,6 @@ def plot_results(y_train, y_test, lstm_training_predictions, lstm_testing_predic
     ax.set_xlabel("Epoch", size=14)
     ax.set_ylabel("Loss", size=14)
     ax.set_title("LSTM Training Loss", size=14, fontweight='bold')
-    fig.set_figheight(6)
-    fig.set_figwidth(16)
 
 
     # GRU graphs
@@ -199,7 +206,6 @@ def plot_results(y_train, y_test, lstm_training_predictions, lstm_testing_predic
 
     sns.set_style("darkgrid")
     plt.subplot(2, 2, 3)
-    fig.subplots_adjust(hspace=0.2, wspace=0.2)
     sns.lineplot(data=df, x=df.index, y='Actual', label='Actual')
     sns.lineplot(x=predicted_1.index, y=predicted_1, label='Predicted Training', color='blue')
     sns.lineplot(x=predicted_2.index, y=predicted_2, label='Predicted Testing', color='red')
@@ -214,6 +220,7 @@ def plot_results(y_train, y_test, lstm_training_predictions, lstm_testing_predic
     ax.set_xlabel("Epoch", size=14)
     ax.set_ylabel("Loss", size=14)
     ax.set_title("GRU Training Loss", size=14, fontweight='bold')
+
     fig.set_figheight(10)
     fig.set_figwidth(16)
 
@@ -257,7 +264,7 @@ def predict_next_n_days(model, n, x_test, y_test, scaler, sequence_length):
 
 
 if __name__ == '__main__':
-    df_date_close, dates = get_data_frame('NOK')
+    df_date_close, dates = get_data_frame('AAPL')
 
     prices, scaler = preprocess(df_date_close)
     x_train, y_train, x_test, y_test = split(prices)
@@ -276,11 +283,11 @@ if __name__ == '__main__':
 
     lstm, lstm_training_predictions, lstm_history, = train(LSTM(), x_train_for_lstm, y_train)
     y_train_for_lstm, y_test_for_lstm, lstm_train_prediction, lstm_testing_predictions = \
-        eval_model(lstm, y_train, lstm_training_predictions, x_test, y_test, scaler)
+        eval_model(lstm, y_train, lstm_training_predictions, x_test, y_test, scaler, "LSTM")
 
     gru, gru_training_prediction, gru_history, = train(GRU(), x_train_for_gru, y_train)
     y_train_for_gru, y_test_for_gru, gru_train_predictions, gru_testing_predictions = \
-        eval_model(gru, y_train, gru_training_prediction, x_test, y_test, scaler)
+        eval_model(gru, y_train, gru_training_prediction, x_test, y_test, scaler, "GRU")
 
     plot_results(scaler.inverse_transform(np.copy(y_train_initial)), scaler.inverse_transform(np.copy(y_test_initial)),
                  lstm_train_prediction, lstm_testing_predictions, gru_train_predictions, gru_testing_predictions,
