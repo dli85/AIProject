@@ -7,11 +7,15 @@ scaler_storage = {}
 
 def create_stock_dataframe(data, ticker):
     stock_data = data[ticker]
-    for date, ratios in stock_data.items():
+    data_list = []
+    for date in stock_data:
+        ratios = dict(stock_data[date])
         ratios['fiscal_closing_date'] = date
-        data.append(ratios)
+        data_list.append(ratios)
 
-    df = pd.DataFrame(data)
+    print(data_list[0])
+
+    df = pd.DataFrame(data_list)
     df.set_index('fiscal_closing_date', inplace=True)
     print(df)
     print(df.columns)
@@ -20,18 +24,21 @@ def create_stock_dataframe(data, ticker):
     for col in df.columns:
         scaler = MinMaxScaler(feature_range=(-1, 1))
         df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
-        scaler_storage[col] = scaler
+        scalers[col] = scaler
 
     scaler_storage[ticker] = scalers
 
-    for col in df.columns:
-        scaler = scaler_storage[ticker][col]
+    print(scaler_storage)
 
     print(df)
 
     print("After")
     for col in df.columns:
-        df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
+        scaler = scaler_storage[ticker][col]
+        df[col] = scaler.inverse_transform(df[[col]].values)
+
+    print(df)
+
     return df
 
 
@@ -44,4 +51,4 @@ def create_stock_dataframe(data, ticker):
 # 5.
 if __name__ == '__main__':
     data = get_all_ratios()
-    create_stock_dataframe(data['AAPL'])
+    create_stock_dataframe(data, 'AAPL')

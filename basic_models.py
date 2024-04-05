@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import seaborn as sns
+import random
 
-training_split = 0.8
+training_split = 0.98
 test_split = 1 - training_split
 sequence_length = 20
 
