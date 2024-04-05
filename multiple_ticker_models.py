@@ -23,7 +23,7 @@ num_layers = 2
 output_dim = 1
 num_epochs = 100
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda")
 
 # sns.set_style("darkgrid")
 
@@ -38,8 +38,8 @@ class LSTM(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim, device=device).requires_grad_()
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim, device=device).requires_grad_()
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
         # out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
         out, _ = self.lstm(x, (h0.detach(), c0.detach()))
         out = self.fc(out[:, -1, :])
@@ -59,7 +59,7 @@ class GRU(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim, device=device).requires_grad_()
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
         out, (hn) = self.gru(x, (h0.detach()))
         out = self.fc(out[:, -1, :])
         return out
@@ -68,17 +68,18 @@ class GRU(nn.Module):
         torch.save(self.state_dict(), path)
 
 
-def get_data_frame(ticker):
-    data = get_all_adjusted_prices(ticker)
-    dates = [x[1] for x in data]
+def get_data_frames(ticker_list):
+    for ticker in ticker_list:
+        data = get_all_adjusted_prices(ticker)
+        dates = [x[1] for x in data]
 
-    df = pd.DataFrame(data, columns=["Date", "Close"])
-    # dates = df["Date"].values
-    df["Date"] = pd.to_datetime(df["Date"])
-    df["Close"] = df["Close"].astype(float)
-    df = df.set_index("Date")
+        df = pd.DataFrame(data, columns=["Date", "Close"])
+        # dates = df["Date"].values
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["Close"] = df["Close"].astype(float)
+        df = df.set_index("Date")
 
-    return df, dates
+        return df, dates
 
 
 def preprocess(df):
@@ -123,9 +124,12 @@ def train(model, x_train, y_train):
     criterion = torch.nn.MSELoss(reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     history = np.zeros(num_epochs)
-    y_train = torch.from_numpy(y_train).type(torch.Tensor).to(device)
+    y_train = torch.from_numpy(y_train).type(torch.Tensor)
     for t in range(num_epochs):
         prediction = model(x_train)
+        print(prediction)
+        print(x_train.shape)
+        input()
 
         loss = criterion(prediction, y_train)
         print(f"Epoch: {t}, MSE: {loss.item()}")
@@ -143,16 +147,16 @@ def train(model, x_train, y_train):
 def eval_model(model, y_train, train_predictions, x_test, y_test, scaler, model_type):
     # x_test = torch.from_numpy(x_test).type(torch.Tensor)
     testing_predictions = model(x_test)
-    y_train = torch.from_numpy(y_train).type(torch.Tensor).to(device)
-    y_test = torch.from_numpy(y_test).type(torch.Tensor).to(device)
+    y_train = torch.from_numpy(y_train).type(torch.Tensor)
+    y_test = torch.from_numpy(y_test).type(torch.Tensor)
 
     sns.set_style("darkgrid")
 
     # invert predictions back to stock values
-    train_predictions = scaler.inverse_transform(train_predictions.cpu().detach().numpy())
-    y_train = scaler.inverse_transform(y_train.cpu().detach().numpy())
-    testing_predictions = scaler.inverse_transform(testing_predictions.cpu().detach().numpy())
-    y_test = scaler.inverse_transform(y_test.cpu().detach().numpy())
+    train_predictions = scaler.inverse_transform(train_predictions.detach().numpy())
+    y_train = scaler.inverse_transform(y_train.detach().numpy())
+    testing_predictions = scaler.inverse_transform(testing_predictions.detach().numpy())
+    y_test = scaler.inverse_transform(y_test.detach().numpy())
 
     train_mse = math.sqrt(mean_squared_error(y_train[:, 0], train_predictions[:, 0]))
     test_mse = math.sqrt(mean_squared_error(y_test[:, 0], testing_predictions[:, 0]))
@@ -245,16 +249,16 @@ def predict_next_n_days(model, n, x_test, y_test, scaler, sequence_length):
         return modified_arr
 
     # create the window: most recent sequence of prices
-    x_test = x_test.cpu().numpy()
+    x_test = x_test.numpy()
     window = [x_test[-1]]
     window = shift(window, y_test[-1])
 
     predictions = []
 
     for i in range(n):  # Predict the next n days
-        window_tensors = torch.from_numpy(np.array(window)).type(torch.Tensor).to(device)
+        window_tensors = torch.from_numpy(np.array(window)).type(torch.Tensor)
         next_prediction = model(window_tensors)
-        predicted_val = next_prediction[0][0].cpu().detach().numpy()
+        predicted_val = next_prediction[0][0].detach().numpy()
         window = shift(window, [predicted_val])
 
         predictions.append(predicted_val.item())
@@ -273,20 +277,20 @@ if __name__ == '__main__':
     y_train_initial = np.copy(y_train)
     y_test_initial = np.copy(y_test)
 
-    x_train_for_lstm = torch.from_numpy(x_train).type(torch.Tensor).to(device)
-    x_test_for_lstm = torch.from_numpy(x_test).type(torch.Tensor).to(device)
+    x_train_for_lstm = torch.from_numpy(x_train).type(torch.Tensor)
+    x_test_for_lstm = torch.from_numpy(x_test).type(torch.Tensor)
 
-    x_train_for_gru = torch.from_numpy(x_train).type(torch.Tensor).to(device)
-    x_test_for_gru = torch.from_numpy(x_test).type(torch.Tensor).to(device)
+    x_train_for_gru = torch.from_numpy(x_train).type(torch.Tensor)
+    x_test_for_gru = torch.from_numpy(x_test).type(torch.Tensor)
 
-    x_train = torch.from_numpy(x_train).type(torch.Tensor).to(device)
-    x_test = torch.from_numpy(x_test).type(torch.Tensor).to(device)
+    x_train = torch.from_numpy(x_train).type(torch.Tensor)
+    x_test = torch.from_numpy(x_test).type(torch.Tensor)
 
-    lstm, lstm_training_predictions, lstm_history, = train(LSTM().to(device), x_train_for_lstm, y_train)
+    lstm, lstm_training_predictions, lstm_history, = train(LSTM(), x_train_for_lstm, y_train)
     y_train_for_lstm, y_test_for_lstm, lstm_train_prediction, lstm_testing_predictions = \
         eval_model(lstm, y_train, lstm_training_predictions, x_test, y_test, scaler, "LSTM")
 
-    gru, gru_training_prediction, gru_history, = train(GRU().to(device), x_train_for_gru, y_train)
+    gru, gru_training_prediction, gru_history, = train(GRU(), x_train_for_gru, y_train)
     y_train_for_gru, y_test_for_gru, gru_train_predictions, gru_testing_predictions = \
         eval_model(gru, y_train, gru_training_prediction, x_test, y_test, scaler, "GRU")
 
