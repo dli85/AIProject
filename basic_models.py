@@ -11,7 +11,7 @@ import torch.nn as nn
 import seaborn as sns
 import random
 
-training_split = 0.98
+training_split = 0.95
 test_split = 1 - training_split
 sequence_length = 20
 
@@ -126,6 +126,9 @@ def train(model, x_train, y_train):
     y_train = torch.from_numpy(y_train).type(torch.Tensor)
     for t in range(num_epochs):
         prediction = model(x_train)
+        print(prediction)
+        print(x_train.shape)
+        input()
 
         loss = criterion(prediction, y_train)
         print(f"Epoch: {t}, MSE: {loss.item()}")
@@ -294,3 +297,4 @@ if __name__ == '__main__':
                  lstm_train_prediction, lstm_testing_predictions, gru_train_predictions, gru_testing_predictions,
                  lstm_history, gru_history, dates)
     predict_next_n_days(gru, 30, x_test, np.copy(y_test_initial), scaler, sequence_length)
+    print(gru)
