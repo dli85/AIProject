@@ -157,7 +157,7 @@ def get_earnings(ticker):
         return None
 
 
-def get_all_adjusted_prices(ticker):
+def get_all_adjusted_prices(ticker, verbose=True):
     prices = get_adjusted_prices_complete_json(ticker, False)
 
     result = []
@@ -165,7 +165,8 @@ def get_all_adjusted_prices(ticker):
     for date in prices:
         result.append((date, prices[date]["5. adjusted close"]))
 
-    print(result)
+    if verbose:
+        print(result)
 
     return result
 

@@ -11,7 +11,7 @@ import torch.nn as nn
 import seaborn as sns
 import random
 
-training_split = 0.95
+training_split = 0.9
 test_split = 1 - training_split
 sequence_length = 20
 
@@ -265,7 +265,7 @@ def predict_next_n_days(model, n, x_test, y_test, scaler, sequence_length):
 
 
 if __name__ == '__main__':
-    df_date_close, dates = get_data_frame('NVDA')
+    df_date_close, dates = get_data_frame('AAPL')
 
     prices, scaler = preprocess(df_date_close)
     x_train, y_train, x_test, y_test = split(prices)
@@ -294,4 +294,3 @@ if __name__ == '__main__':
                  lstm_train_prediction, lstm_testing_predictions, gru_train_predictions, gru_testing_predictions,
                  lstm_history, gru_history, dates)
     predict_next_n_days(gru, 30, x_test, np.copy(y_test_initial), scaler, sequence_length)
-    print(gru)
