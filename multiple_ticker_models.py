@@ -24,7 +24,8 @@ training_split = 0.8
 test_split = 1 - training_split
 # If randomize testing is false, use existing training and testing list
 training_tickers = ['AAPL', 'MFST', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
-testing_tickers = ['NVDA', 'UBER']
+# testing_tickers = ['NVDA', 'UBER']
+testing_tickers = ['CL', 'KVYO', 'GS']
 
 scalers = {}
 dates = {}
@@ -175,6 +176,7 @@ def sequence_and_split(ticker_prices_map):
 
 def train(model, ticker_x_map, ticker_y_map):
     for ticker in ticker_x_map:
+        print(f"Training using {ticker}...")
         x_train = torch.from_numpy(ticker_x_map[ticker]).type(torch.Tensor).to(device)
         y_train = torch.from_numpy(ticker_y_map[ticker]).type(torch.Tensor).to(device)
 
@@ -241,13 +243,13 @@ def plot_singular_complete(predicted, actual, ticker, model_info):
 
     fig = plt.figure()
     fig.set_figheight(8)
-    fig.set_figwidth(10)
+    fig.set_figwidth(16)
     sns.set_style("darkgrid")
     sns.lineplot(data=df, x=df.index, y='Actual price', label='Actual')
     sns.lineplot(data=df, x=df.index, y='Predicted price', label='Predicted')
 
     n = len(dates_x)
-    step_size = max(n // 4, 1)  # Divide into roughly 4 sections
+    step_size = max(n // 25, 1)  # Divide into roughly 4 sections
     display_dates = dates_x[::step_size]
     plt.xticks(display_dates, rotation=45)
 
@@ -315,8 +317,8 @@ def plot_results(y_train, y_test, lstm_training_predictions, lstm_testing_predic
     ax.set_ylabel("Loss", size=14)
     ax.set_title("GRU Training Loss", size=14, fontweight='bold')
 
-    fig.set_figheight(10)
-    fig.set_figwidth(16)
+    fig.set_figheight(8)
+    fig.set_figwidth(12)
 
     plt.show()
 
@@ -332,11 +334,26 @@ if __name__ == '__main__':
     x_train_copy = copy.deepcopy(x_train)
     y_train_copy = copy.deepcopy(y_train)
 
-    if use_model == 'LSTM':
-        lstm = train(LSTM().to(device), x_train, y_train)
+    LOAD_SAVED_MODEL = True
 
-        eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
-    elif use_model == 'GRU':
-        gru = train(GRU().to(device), x_train, y_train)
+    if LOAD_SAVED_MODEL:
+        if use_model == 'LSTM':
+            lstm = LSTM().to(device)
+            lstm.load_state_dict(torch.load("lstm_multiple_ticker.pt"))
+            lstm.eval()
 
-        eval_model(gru, x_train_copy, y_train_copy, x_test, y_test, "GRU")
+            eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+
+        elif use_model == 'GRU':
+            gru = GRU().to(device)
+            gru.load_state_dict(torch.load("gru_multiple_ticker.pt"))
+            gru.eval()
+    else:
+        if use_model == 'LSTM':
+            lstm = train(LSTM().to(device), x_train, y_train) 
+
+            eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+        elif use_model == 'GRU':
+            gru = train(GRU().to(device), x_train, y_train)
+
+            eval_model(gru, x_train_copy, y_train_copy, x_test, y_test, "GRU")
