@@ -14,8 +14,10 @@ import seaborn as sns
 import random
 from tqdm import tqdm
 
-use_model = 'GRU'
+# 'LSTM' or 'GRU'
+use_model = 'LSTM'
 # If randomize testing is True, randomly choose test tickers from ticker list
+# Otherwise, training and testing tickers must be specified.
 randomize_testing = False
 ticker_list = ['AAPL', 'MFST', 'GOOGL', 'NVDA', 'META', 'UBER', 'TLSA', 'ORCL', 'CRM', 'NFLX']
 training_split = 0.8
@@ -168,13 +170,6 @@ def sequence_and_split(ticker_prices_map):
                 x_test[ticker] = complete_x[ticker]
                 y_test[ticker] = complete_y[ticker]
 
-        # plt.plot(y_train, color='blue', marker='*', linestyle='--')
-        # plt.xlabel("Index")
-        # plt.ylabel("Values")
-        # plt.title("Data Plot")
-        # plt.grid(True)
-        # plt.show()
-
     return [x_train, y_train, x_test, y_test]
 
 
@@ -211,8 +206,21 @@ def eval_model(model, x_train_map, y_train_map, x_test_map, y_test_map, model_ty
         y_test = y_test_map[ticker]
         testing_predictions = model(x_test)
         testing_predictions = testing_predictions.cpu().detach().numpy()
-        test_mse = math.sqrt(mean_squared_error(y_test[:, 0], testing_predictions[:, 0]))
-        print(f"{model_type} Test MSE for {ticker}: {test_mse}")
+        # test_mse = mean_squared_error(y_test[:, 0], testing_predictions[:, 0])
+
+        scaler = copy.deepcopy(scalers[ticker])
+        scaler2 = copy.deepcopy(scalers[ticker])
+
+        y_test_inverted = scaler.inverse_transform(np.array(y_test))
+        testing_predictions_inverted = scaler2.inverse_transform(np.array(testing_predictions))
+
+        print(y_test_inverted[:, 0])
+        print(testing_predictions_inverted[:, 0])
+
+        test_rmse = math.sqrt(mean_squared_error(y_test_inverted[:, 0], testing_predictions_inverted[:, 0]))
+
+        print(f"{model_type} Test RMSE for {ticker}: {test_rmse}")
+
         plot_singular_complete(testing_predictions, y_test, ticker, model_type)
 
 
