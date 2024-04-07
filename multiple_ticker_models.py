@@ -19,13 +19,12 @@ use_model = 'LSTM'
 # If randomize testing is True, randomly choose test tickers from ticker list
 # Otherwise, training and testing tickers must be specified.
 randomize_testing = False
-ticker_list = ['AAPL', 'MFST', 'GOOGL', 'NVDA', 'META', 'UBER', 'TLSA', 'ORCL', 'CRM', 'NFLX']
+ticker_list = ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'UBER', 'TSLA', 'ORCL', 'CRM', 'NFLX']
 training_split = 0.8
 test_split = 1 - training_split
 # If randomize testing is false, use existing training and testing list
-training_tickers = ['AAPL', 'MFST', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
-# testing_tickers = ['NVDA', 'UBER']
-testing_tickers = ['CL', 'KVYO', 'GS']
+training_tickers = ['MSFT', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
+testing_tickers = ['NVDA', 'UBER', 'AAPL',]
 
 scalers = {}
 dates = {}
@@ -208,20 +207,9 @@ def eval_model(model, x_train_map, y_train_map, x_test_map, y_test_map, model_ty
         y_test = y_test_map[ticker]
         testing_predictions = model(x_test)
         testing_predictions = testing_predictions.cpu().detach().numpy()
-        # test_mse = mean_squared_error(y_test[:, 0], testing_predictions[:, 0])
+        test_rmse = mean_squared_error(y_test[:, 0], testing_predictions[:, 0])
 
-        scaler = copy.deepcopy(scalers[ticker])
-        scaler2 = copy.deepcopy(scalers[ticker])
-
-        y_test_inverted = scaler.inverse_transform(np.array(y_test))
-        testing_predictions_inverted = scaler2.inverse_transform(np.array(testing_predictions))
-
-        print(y_test_inverted[:, 0])
-        print(testing_predictions_inverted[:, 0])
-
-        test_rmse = math.sqrt(mean_squared_error(y_test_inverted[:, 0], testing_predictions_inverted[:, 0]))
-
-        print(f"{model_type} Test RMSE for {ticker}: {test_rmse}")
+        print(f"RMSE for {model_type} with {ticker}: {test_rmse}")
 
         plot_singular_complete(testing_predictions, y_test, ticker, model_type)
 
@@ -242,83 +230,47 @@ def plot_singular_complete(predicted, actual, ticker, model_info):
                       index=dates_x)
 
     fig = plt.figure()
+    fig.subplots_adjust(hspace=0.4, wspace=0.2)
     fig.set_figheight(8)
     fig.set_figwidth(16)
     sns.set_style("darkgrid")
+    plt.subplot(2, 1, 1)
     sns.lineplot(data=df, x=df.index, y='Actual price', label='Actual')
     sns.lineplot(data=df, x=df.index, y='Predicted price', label='Predicted')
 
     n = len(dates_x)
-    step_size = max(n // 25, 1)  # Divide into roughly 4 sections
-    display_dates = dates_x[::step_size]
-    plt.xticks(display_dates, rotation=45)
+    step_size = max(n // 10, 1)  # Divide into roughly 4 sections
+    display_dates = dates_x[::-step_size]
+    plt.xticks(display_dates)
 
     plt.xlabel("Date")
     plt.ylabel("Stock Price")
-    plt.title(f"{ticker} Predictions - {model_info}")
+    plt.title(f"{ticker} Predictions - {model_info} All dates")
     plt.legend()
-    plt.show()
 
+    recent_days_back = 365
 
-def plot_results(y_train, y_test, lstm_training_predictions, lstm_testing_predictions,
-                 gru_train_predictions, gru_testing_predictions, lstm_history, gru_history):
-    # lstm graphs
-    df = pd.DataFrame({'Actual': np.concatenate((y_train.flatten(), y_test.flatten())),
-                       'Predicted': np.concatenate((lstm_training_predictions.flatten(),
-                                                    lstm_testing_predictions.flatten()))})
-
-    split_index = int(training_split * (len(lstm_training_predictions) + len(lstm_testing_predictions)))
-    predicted_1 = df['Predicted'].iloc[:split_index]
-    predicted_2 = df['Predicted'].iloc[split_index:]
-
-    fig = plt.figure()
+    predicted_recent = predicted[-recent_days_back:]
+    actual_recent = actual[-recent_days_back:]
+    dates_x_recent = dates_x[-recent_days_back:]
+    df_recent = pd.DataFrame({'Actual price': actual_recent.flatten(),
+                              'Predicted price': predicted_recent.flatten()},
+                             index=dates_x_recent)
 
     sns.set_style("darkgrid")
-    plt.subplot(2, 2, 1)
-    fig.subplots_adjust(hspace=0.4, wspace=0.2)
-    sns.lineplot(data=df, x=df.index, y='Actual', label='Actual')
-    sns.lineplot(x=predicted_1.index, y=predicted_1, label='Predicted Training', color='blue')
-    sns.lineplot(x=predicted_2.index, y=predicted_2, label='Predicted Testing', color='red')
+    plt.subplot(2, 1, 2)
+    sns.lineplot(data=df_recent, x=df_recent.index, y='Actual price', label='Actual')
+    sns.lineplot(data=df_recent, x=df_recent.index, y='Predicted price', label='Predicted')
 
-    plt.xlabel("Time Step")
+    n = len(dates_x_recent)
+    step_size = max(n // 10, 1)
+    display_dates_recent = dates_x_recent[::-step_size]
+    plt.xticks(display_dates_recent)
+
+    plt.xlabel("Date")
     plt.ylabel("Stock Price")
-    plt.title("LSTM Predictions")
+    plt.title(f"{ticker} Predictions - {model_info} Recent {recent_days_back} weekdays")
     plt.legend()
-
-    plt.subplot(2, 2, 2)
-    ax = sns.lineplot(data=lstm_history, color='royalblue')
-    ax.set_xlabel("Epoch", size=14)
-    ax.set_ylabel("Loss", size=14)
-    ax.set_title("LSTM Training Loss", size=14, fontweight='bold')
-
-    # GRU graphs
-    df = pd.DataFrame({'Actual': np.concatenate((y_train.flatten(), y_test.flatten())),
-                       'Predicted': np.concatenate(
-                           (gru_train_predictions.flatten(), gru_testing_predictions.flatten()))})
-
-    split_index = int(training_split * (len(gru_train_predictions) + len(gru_testing_predictions)))
-    predicted_1 = df['Predicted'].iloc[:split_index]
-    predicted_2 = df['Predicted'].iloc[split_index:]
-
-    sns.set_style("darkgrid")
-    plt.subplot(2, 2, 3)
-    sns.lineplot(data=df, x=df.index, y='Actual', label='Actual')
-    sns.lineplot(x=predicted_1.index, y=predicted_1, label='Predicted Training', color='blue')
-    sns.lineplot(x=predicted_2.index, y=predicted_2, label='Predicted Testing', color='red')
-
-    plt.xlabel("Time Step")
-    plt.ylabel("Stock Price")
-    plt.title("GRU Predictions")
-    plt.legend()
-
-    plt.subplot(2, 2, 4)
-    ax = sns.lineplot(data=gru_history, color='royalblue')
-    ax.set_xlabel("Epoch", size=14)
-    ax.set_ylabel("Loss", size=14)
-    ax.set_title("GRU Training Loss", size=14, fontweight='bold')
-
-    fig.set_figheight(8)
-    fig.set_figwidth(12)
 
     plt.show()
 
@@ -334,7 +286,7 @@ if __name__ == '__main__':
     x_train_copy = copy.deepcopy(x_train)
     y_train_copy = copy.deepcopy(y_train)
 
-    LOAD_SAVED_MODEL = True
+    LOAD_SAVED_MODEL = False
 
     if LOAD_SAVED_MODEL:
         if use_model == 'LSTM':
