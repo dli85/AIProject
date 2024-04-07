@@ -1,75 +1,56 @@
 import json
+import os
 
 
 def calculate_working_capital(data):
-    working_capital_list = []
-    for i in range(len(data)):
-        if data[i]['totalCurrentAssets'] == 'None' or data[i]['totalCurrentLiabilities'] == 'None':
-            working_capital_list.append(0)
-            continue
-        working_capital = int(data[i]['totalCurrentAssets']) / int(data[i]['totalCurrentLiabilities'])
-        working_capital_list.append(working_capital)
-    return working_capital_list
+    if data['totalCurrentAssets'] == 'None' or data['totalCurrentLiabilities'] == 'None':
+        return 0
+    working_capital = float(data['totalCurrentAssets']) / float(data['totalCurrentLiabilities'])
+    return working_capital
+
 
 def calculate_debt_to_equity(data):
-    debt_to_equity_list = []
-    for i in range(len(data)):
-        if data[i]['currentDebt'] == 'None' or data[i]['totalShareholderEquity'] == 'None':
-            debt_to_equity_list.append(0)
-            continue
-        debt_to_equity = int(data[i]['currentDebt']) / int(data[i]['totalShareholderEquity'])
-        debt_to_equity_list.append(debt_to_equity)
-    return debt_to_equity_list
+    if data['currentDebt'] == 'None' or data['totalShareholderEquity'] == 'None':
+        return 0
+    debt_to_equity = int(data['currentDebt']) / int(data['totalShareholderEquity'])
+    return debt_to_equity
+
 
 def calculate_gross_profit_margin(data):
-    gross_profit_margin_list = []
-    for i in range(len(data)):
-        if data[i]['grossProfit'] == 'None' or data[i]['costofGoodsAndServicesSold'] == 'None' or data[i]['totalRevenue'] == 'None':
-            gross_profit_margin_list.append(0)
-            continue
-        gross_profit_margin = (int(data[i]['grossProfit']) - int(data[i]['costofGoodsAndServicesSold'])) / int(data[i]['totalRevenue'])
-        gross_profit_margin_list.append(gross_profit_margin)
-    return gross_profit_margin_list
+    if data['grossProfit'] == 'None' or data['costofGoodsAndServicesSold'] == 'None' \
+            or data['totalRevenue'] == 'None' or data['totalRevenue'] == '0':
+        return 0
+    gross_profit_margin = (float(data['grossProfit']) - float(data['costofGoodsAndServicesSold'])) / float(data['totalRevenue'])
+    return gross_profit_margin
+
 
 def calculate_operating_profit_margin(data):
-    operating_profit_margin_list = []
-    for i in range(len(data)):
-        if data[i]['operatingIncome'] == 'None' or data[i]['totalRevenue'] == 'None':
-            operating_profit_margin_list.append(0)
-            continue
-        operating_profit_margin = int(data[i]['operatingIncome']) / int(data[i]['totalRevenue'])
-        operating_profit_margin_list.append(operating_profit_margin)
-    return operating_profit_margin_list
+    if data['operatingIncome'] == 'None' or data['totalRevenue'] == 'None' or data['totalRevenue'] == '0':
+        return 0
+    operating_profit_margin = float(data['operatingIncome']) / float(data['totalRevenue'])
+    return operating_profit_margin
+
 
 def calculate_interest_coverage_ratio(data):
-    interest_coverage_ratio_list = []
-    for i in range(len(data)):
-        if data[i]['ebit'] == 'None' or data[i]['interestExpense'] == 'None' or int(data[i]['interestExpense']) == 0:
-            interest_coverage_ratio_list.append(0)
-            continue
-        interest_coverage_ratio = int(data[i]['ebit']) / int(data[i]['interestExpense'])
-        interest_coverage_ratio_list.append(interest_coverage_ratio)
-    return interest_coverage_ratio_list
+    if data['ebit'] == 'None' or data['interestExpense'] == 'None' or data['interestExpense'] == '0':
+        return 0
+    interest_coverage_ratio = float(data['ebit']) / float(data['interestExpense'])
+    return interest_coverage_ratio
+
 
 def calculate_operating_cash_flow_ratio(data):
-    operating_cash_flow_ratio_list = []
-    for i in range(len(data)):
-        if data[i]['operatingCashflow'] == 'None' or data[i]['totalRevenue'] == 'None':
-            operating_cash_flow_ratio_list.append(0)
-            continue
-        operating_cash_flow_ratio = int(data[i]['operatingCashflow']) / int(data[i]['totalRevenue'])
-        operating_cash_flow_ratio_list.append(operating_cash_flow_ratio)
-    return operating_cash_flow_ratio_list
+    if data['operatingCashflow'] == 'None' or data['totalRevenue'] == 'None' or data['totalRevenue'] == '0':
+        return 0
+    operating_cash_flow_ratio = float(data['operatingCashflow']) / float(data['totalRevenue'])
+    return operating_cash_flow_ratio
+
 
 def calculate_cashflow_coverage_ratio(data):
-    cashflow_coverage_ratio_list = []
-    for i in range(len(data)):
-        if data[i]['operatingCashflow'] == 'None' or data[i]['currentDebt'] == 'None':
-            cashflow_coverage_ratio_list.append(0)
-            continue
-        cashflow_coverage_ratio = int(data[i]['operatingCashflow']) / int(data[i]['currentDebt'])
-        cashflow_coverage_ratio_list.append(cashflow_coverage_ratio)
-    return cashflow_coverage_ratio_list
+    if data['operatingCashflow'] == 'None' or data['currentDebt'] == 'None' or int(data['currentDebt']) == 0:
+        return 0
+    cashflow_coverage_ratio = int(data['operatingCashflow']) / int(data['currentDebt'])
+    return cashflow_coverage_ratio
+
 
 def get_ratios(ticker):
     ticker = ticker.upper()
@@ -77,13 +58,35 @@ def get_ratios(ticker):
     with open(file) as f:
         data = json.load(f)[ticker]
 
-    working_capital = calculate_working_capital(data)
-    debt_to_equity = calculate_debt_to_equity(data)
-    gross_profit_margin = calculate_gross_profit_margin(data)
-    operating_profit_margin = calculate_operating_profit_margin(data)
-    interest_coverage_ratio = calculate_interest_coverage_ratio(data)
-    operating_cash_flow_ratio = calculate_operating_cash_flow_ratio(data)
-    cashflow_coverage_ratio = calculate_cashflow_coverage_ratio(data)
+    results = {}
 
-    return (working_capital, debt_to_equity, gross_profit_margin, operating_profit_margin, interest_coverage_ratio,
-            operating_cash_flow_ratio, cashflow_coverage_ratio)
+    for entry in data:
+        date = entry['fiscalDateEnding']
+        current = dict()
+        current['working_capital'] = calculate_working_capital(entry)
+        current['debt_to_equity'] = calculate_debt_to_equity(entry)
+        current['gross_profit_margin'] = calculate_gross_profit_margin(entry)
+        current['operating_profit_margin'] = calculate_operating_profit_margin(entry)
+        current['interest_coverage_ratio'] = calculate_interest_coverage_ratio(entry)
+        current['operating_cash_flow_ratio'] = calculate_operating_cash_flow_ratio(entry)
+        current['cashflow_coverage_ratio'] = calculate_cashflow_coverage_ratio(entry)
+        current['close_price'] = entry['closePrice']
+        results[date] = current
+
+    return results
+
+
+def get_all_ratios(jsons_path='./APIs/CompleteTechJSONs/'):
+    data = dict()
+    for filename in os.listdir(jsons_path):
+        ticker = filename.split('.')[0]
+        data[ticker] = get_ratios(ticker)
+
+    return data
+
+
+if __name__ == '__main__':
+    print(get_all_ratios()['AAPL'])
+    print(get_all_ratios()['AAPL']['2023-12-31'])
+    print(get_all_ratios()['AAPL']['2023-09-30'])
+
