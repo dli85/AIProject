@@ -176,4 +176,4 @@ if __name__ == "__main__":
     # print(get_close_price('2023-12-31', 'AAPL'))
     # print(get_earning_dates('NVDA'))
     # print(get_adjusted_prices_complete_json('NVDA', True))
-    get_all_adjusted_prices('AAPL')
+    get_all_adjusted_prices('TSLA')
