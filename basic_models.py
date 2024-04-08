@@ -11,6 +11,8 @@ import torch.nn as nn
 import seaborn as sns
 import random
 
+model_path = './models'
+
 training_split = 0.9
 test_split = 1 - training_split
 sequence_length = 20
@@ -45,7 +47,7 @@ class LSTM(nn.Module):
         out = self.fc(out[:, -1, :])
         return out
 
-    def save_model(self, path="lstm.pt"):
+    def save_model(self, path=f"{model_path}/lstm.pt"):
         torch.save(self.state_dict(), path)
 
 
@@ -64,7 +66,7 @@ class GRU(nn.Module):
         out = self.fc(out[:, -1, :])
         return out
 
-    def save_model(self, path="gru.pt"):
+    def save_model(self, path=f"{model_path}/gru.pt"):
         torch.save(self.state_dict(), path)
 
 
@@ -109,12 +111,12 @@ def split(stock):
     # x_train[i] = some sequence of prices
     # y_train[i] = the next price
 
-    plt.plot(y_train, color='blue', marker='*', linestyle='--')
-    plt.xlabel("Index")
-    plt.ylabel("Values")
-    plt.title("Data Plot")
-    plt.grid(True)
-    plt.show()
+    # plt.plot(y_train, color='blue', marker='*', linestyle='--')
+    # plt.xlabel("Index")
+    # plt.ylabel("Values")
+    # plt.title("Data Plot")
+    # plt.grid(True)
+    # plt.show()
 
     return [x_train, y_train, x_test, y_test]
 

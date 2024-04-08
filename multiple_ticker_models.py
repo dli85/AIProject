@@ -14,8 +14,10 @@ import seaborn as sns
 import random
 from tqdm import tqdm
 
+model_path = './models'
+
 # 'LSTM' or 'GRU'
-use_model = 'LSTM'
+use_model = 'GRU'
 # If randomize testing is True, randomly choose test tickers from ticker list
 # Otherwise, training and testing tickers must be specified.
 randomize_testing = False
@@ -24,7 +26,7 @@ training_split = 0.8
 test_split = 1 - training_split
 # If randomize testing is false, use existing training and testing list
 training_tickers = ['MSFT', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
-testing_tickers = ['NVDA', 'UBER', 'AAPL',]
+testing_tickers = ['NVDA', 'UBER', 'AAPL']
 
 scalers = {}
 dates = {}
@@ -62,7 +64,7 @@ class LSTM(nn.Module):
         out = self.fc(out[:, -1, :])
         return out
 
-    def save_model(self, path="lstm_multiple_ticker.pt"):
+    def save_model(self, path=f"{model_path}/lstm_multiple_ticker.pt"):
         torch.save(self.state_dict(), path)
 
 
@@ -81,7 +83,7 @@ class GRU(nn.Module):
         out = self.fc(out[:, -1, :])
         return out
 
-    def save_model(self, path="gru_multiple_ticker.pt"):
+    def save_model(self, path=f"{model_path}/gru_multiple_ticker.pt"):
         torch.save(self.state_dict(), path)
 
 
@@ -291,14 +293,14 @@ if __name__ == '__main__':
     if LOAD_SAVED_MODEL:
         if use_model == 'LSTM':
             lstm = LSTM().to(device)
-            lstm.load_state_dict(torch.load("lstm_multiple_ticker.pt"))
+            lstm.load_state_dict(torch.load(f"{model_path}/lstm_multiple_ticker.pt"))
             lstm.eval()
 
             eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
 
         elif use_model == 'GRU':
             gru = GRU().to(device)
-            gru.load_state_dict(torch.load("gru_multiple_ticker.pt"))
+            gru.load_state_dict(torch.load(f"{model_path}/gru_multiple_ticker.pt"))
             gru.eval()
     else:
         if use_model == 'LSTM':
