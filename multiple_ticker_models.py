@@ -209,7 +209,7 @@ def eval_and_plot_model(model, x_train_map, y_train_map, x_test_map, y_test_map,
         testing_predictions = testing_predictions.cpu().detach().numpy()
         test_rmse = mean_squared_error(y_test[:, 0], testing_predictions[:, 0])
 
-        print(f"RMSE for {model_type} with {ticker}: {test_rmse}")
+        print(f"MSE for {model_type} with {ticker}: {test_rmse}")
 
         plot_singular_complete(testing_predictions, y_test, ticker, model_type, sequence_length)
 

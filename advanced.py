@@ -1,9 +1,16 @@
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 from ratios import get_all_ratios
 import numpy as np
 import torch
 import torch.nn as nn
+import os
+
+from copy import deepcopy
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 # enums
@@ -111,7 +118,7 @@ def sequence_data(dataframes_map):
             temp = []
             for row in df_array:
                 temp.append(row[index:index + input_sequence_length])
-            X.append(temp)
+            X.append(np.array(temp).transpose())
             y.append(df_array[-1][index + input_sequence_length])
         #
         # print(df)
@@ -144,16 +151,16 @@ def sequence_data(dataframes_map):
 
 def train(model, training_data, num_epochs=100):
     for ticker in training_data:
-        temp = []
-        X_train = np.array(training_data[ticker]['X'])
-        for i in range(len(X_train)):
-            temp.append(np.array(X_train[i].transpose()))
+        # temp = []
+        # X_train = np.array(training_data[ticker]['X'])
+        # for i in range(len(X_train)):
+        #     temp.append(np.array(X_train[i].transpose()))
         # print(np.array(training_data[ticker]['X'][0]).transpose())
         # print(np.array(training_data[ticker]['X']).shape)
         # print(len(training_data[ticker]['X'][0]))
         # input()
         # X_train = torch.from_numpy(np.array(training_data[ticker]['X'])).type(torch.Tensor).to(device)
-        X_train = torch.from_numpy(np.array(temp)).type(torch.Tensor).to(device)
+        X_train = torch.from_numpy(np.array(training_data[ticker]['X'])).type(torch.Tensor).to(device)
         y_train = torch.from_numpy(np.array(training_data[ticker]['y'])).type(torch.Tensor).to(device)
 
         # print(X_train.shape)
@@ -166,7 +173,11 @@ def train(model, training_data, num_epochs=100):
             prediction = model(X_train)
             prediction = prediction.squeeze(1)
 
-            loss = criterion(prediction, y_train)
+            # loss = criterion(prediction, y_train)
+
+            loss = criterion(prediction, y_train)  # Loss on the single predicted value
+            close_price_loss = criterion(prediction, y_train)
+            loss += 2 * close_price_loss
 
             print(f"Epoch: {t}, MSE: {loss.item()}")
 
@@ -179,7 +190,15 @@ def train(model, training_data, num_epochs=100):
 
 def eval_model_and_plot(model, testing_data):
     for ticker in testing_data:
-        pass
+        x_test = torch.from_numpy(np.array(testing_data[ticker]['X'])).type(torch.Tensor).to(device)
+        y_test = torch.from_numpy(np.array(testing_data[ticker]['y'])).type(torch.Tensor).to(device)
+        testing_predictions = model(x_test)
+        testing_predictions = testing_predictions.cpu().detach().numpy()
+        y_test = y_test.cpu().detach().numpy()
+        test_rmse = mean_squared_error(y_test, testing_predictions[:, 0])
+
+        print(f"RMSE for LSTM with {ticker}: {test_rmse}")
+        plot_singular_complete(testing_predictions, y_test, ticker, 'LSTM')
 
 
 def train_ratio_model(testing_tickers):
@@ -204,7 +223,61 @@ def train_ratio_model(testing_tickers):
     testing_X_y = sequence_data(testing_dfs)
     training_X_y = sequence_data(training_dfs)
 
-    train(LSTM(input_dim=8).to(device), training_X_y)
+    if os.path.exists(f"{models_path}/lstm_advanced.pt"):
+        model_state_dict = torch.load(f"{models_path}/lstm_advanced.pt")
+        model = LSTM()
+        model.load_state_dict(model_state_dict)
+        model.to(device)
+    else:
+        model = train(LSTM(input_dim=input_size).to(device), training_X_y)
+
+    eval_model_and_plot(model, testing_X_y)
+
+
+def plot_singular_complete(predicted, actual, ticker, model_info):
+    def reshape_array(array):
+        """Reshapes an array so that each element is in its own list.
+
+        Args:
+            array: The input array to reshape.
+
+        Returns:
+            A list of lists, where each inner list contains a single element from the original array.
+        """
+        return array.reshape(-1, 1).tolist()
+    scaler_predicted = deepcopy(scaler_storage[ticker]['close_price'])
+    scaler_actual = deepcopy(scaler_storage[ticker]['close_price'])
+    predicted = scaler_predicted.inverse_transform(reshape_array(predicted))
+    actual = scaler_actual.inverse_transform(reshape_array(actual))
+
+    # dates_x = dates[ticker]
+    # dates_x.reverse()
+    # dates_x = dates_x[sequence_length:]
+    # dates_x = pd.to_datetime(dates_x)
+
+    df = pd.DataFrame({'Actual price': actual.flatten(),
+                       'Predicted price': predicted.flatten()},
+                      )
+
+    fig = plt.figure()
+    fig.subplots_adjust(hspace=0.4, wspace=0.2)
+    fig.set_figheight(8)
+    fig.set_figwidth(16)
+    sns.set_style("darkgrid")
+    plt.subplot(2, 1, 1)
+    sns.lineplot(data=df, x=df.index, y='Actual price', label='Actual')
+    sns.lineplot(data=df, x=df.index, y='Predicted price', label='Predicted')
+
+    # n = len(dates_x)
+    # step_size = max(n // 10, 1)  # Divide into roughly 4 sections
+    # display_dates = dates_x[::-step_size]
+    # plt.xticks(display_dates)
+
+    plt.xlabel("Date")
+    plt.ylabel("Stock Price")
+    plt.title(f"{ticker} Predictions - {model_info} All dates")
+    plt.legend()
+    plt.show()
 
 
 # Tips for guiding LSTM to focus on predicting the closing price:
@@ -215,4 +288,5 @@ def train_ratio_model(testing_tickers):
 # 4. attention mechanisms
 # 5.
 if __name__ == '__main__':
-    train_ratio_model(['AAPL', 'META', 'NVDA'])
+
+    train_ratio_model(['AAPL', 'NVDA'])
