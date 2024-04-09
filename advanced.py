@@ -7,7 +7,7 @@ import torch.nn as nn
 
 training_split = 0.95
 test_split = 1 - training_split
-sequence_length = 20
+sequence_length = 5
 
 input_dim = 2
 
@@ -19,7 +19,7 @@ num_epochs = 100
 
 
 scaler_storage = {}
-# pd.set_option('display.max_columns', 4)
+# pd.set_option('display.max_columns', 10)
 
 
 class LSTM(nn.Module):
@@ -66,19 +66,43 @@ def create_stock_dataframe(data, ticker):
         df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
         scalers[col] = scaler
 
+    # print(df)
+
     scaler_storage[ticker] = scalers
 
     # print(scaler_storage)
 
-    # print(df)
 
     # Test inverse transformations
     # print("After")
     # for col in df.columns:
     #     scaler = scaler_storage[ticker][col]
     #     df[col] = scaler.inverse_transform(df[[col]].values)
+    #
+    # print(df)
+    # input()
 
     return df
+
+
+def train(model, dataframes):
+    for df in dataframes:
+        testing_df = df.copy()
+        # testing_df.drop('fiscal_closing_date', inplace=True)
+        df_array =testing_df.to_numpy()
+        df_array = np.transpose(df_array)
+        data = []
+        for index in range(len(df_array[0]) - sequence_length):
+            temp = []
+            for row in df_array:
+                pass
+            data.append(df_array[''])
+
+        print(df)
+        for a in df_array:
+            print(*a)
+        # print(df_array)
+        input()
 
 
 def transform_stock_data(dataframes, max_len=None):
@@ -132,5 +156,6 @@ if __name__ == '__main__':
             continue
         dataframes.append(df)
 
-    tensors = transform_stock_data(dataframes)
-    print(tensors)
+    train(LSTM(), dataframes)
+
+    # tensors = transform_stock_data(dataframes)

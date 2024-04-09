@@ -1,4 +1,5 @@
 import math
+from functools import lru_cache
 from typing import List, Dict
 
 import pandas as pd
@@ -17,7 +18,6 @@ from tqdm import tqdm
 model_path = './models'
 
 # 'LSTM' or 'GRU'
-use_model = 'GRU'
 # If randomize testing is True, randomly choose test tickers from ticker list
 # Otherwise, training and testing tickers must be specified.
 randomize_testing = False
@@ -31,15 +31,10 @@ testing_tickers = ['NVDA', 'UBER', 'AAPL']
 scalers = {}
 dates = {}
 
-sequence_length = 20
-
 input_dim = 1
 
 # nodes per layer
-hidden_dim = 32
-num_layers = 2
 output_dim = 1
-num_epochs = 100
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -48,7 +43,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class LSTM(nn.Module):
-    def __init__(self, input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim):
+    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
         super(LSTM, self).__init__()
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
@@ -69,7 +64,7 @@ class LSTM(nn.Module):
 
 
 class GRU(nn.Module):
-    def __init__(self, input_dim=input_dim, hidden_dim=hidden_dim, num_layers=num_layers, output_dim=output_dim):
+    def __init__(self, input_dim, hidden_dim, num_layers, output_dim):
         super(GRU, self).__init__()
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
@@ -87,8 +82,9 @@ class GRU(nn.Module):
         torch.save(self.state_dict(), path)
 
 
-def get_data_frames(tickers: List[str], existing_training, existing_testing):
-    if not randomize_testing:
+@lru_cache(maxsize=None)
+def get_data_frames(tickers, existing_training, existing_testing, randomize):
+    if not randomize:
         tickers = existing_training + existing_testing
 
     # Mappings of ticker to data frame
@@ -125,7 +121,7 @@ def preprocess(ticker_dataframes_map):
     return ticker_prices_map
 
 
-def sequence_and_split(ticker_prices_map):
+def sequence_and_split(ticker_prices_map, sequence_length, randomize):
     x_train = dict()
     y_train = dict()
     x_test = dict()
@@ -152,7 +148,7 @@ def sequence_and_split(ticker_prices_map):
         # x_train[i] = some sequence of prices
         # y_train[i] = the next price
 
-    if randomize_testing:
+    if randomize:
         test_stock_size = max(round(len(complete_x.keys()) * test_split), 1)
         test_stock_tickers = random.sample(list(complete_x.keys()), test_stock_size)
 
@@ -175,34 +171,36 @@ def sequence_and_split(ticker_prices_map):
     return [x_train, y_train, x_test, y_test]
 
 
-def train(model, ticker_x_map, ticker_y_map):
+def train(model, ticker_x_map, ticker_y_map, num_epochs, lr, verbose=True):
     for ticker in ticker_x_map:
-        print(f"Training using {ticker}...")
+        if verbose:
+            print(f"Training using {ticker}...")
         x_train = torch.from_numpy(ticker_x_map[ticker]).type(torch.Tensor).to(device)
         y_train = torch.from_numpy(ticker_y_map[ticker]).type(torch.Tensor).to(device)
 
         criterion = torch.nn.MSELoss(reduction='mean')
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         history = np.zeros(num_epochs)
         for t in range(num_epochs):
             prediction = model(x_train)
 
             loss = criterion(prediction, y_train)
-            print(f"Epoch: {t}, MSE: {loss.item()}")
+            if verbose:
+                print(f"Epoch: {t}, MSE: {loss.item()}")
             history[t] = loss.item()
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
-        print()
+        if verbose:
+            print()
 
     model.save_model()
 
     return model
 
 
-def eval_model(model, x_train_map, y_train_map, x_test_map, y_test_map, model_type):
+def eval_and_plot_model(model, x_train_map, y_train_map, x_test_map, y_test_map, model_type, sequence_length):
     for ticker in x_test_map:
         x_test = torch.from_numpy(x_test_map[ticker]).type(torch.Tensor).to(device)
         # y_test = torch.from_numpy(y_test_map[ticker]).type(torch.Tensor).to(device)
@@ -213,10 +211,23 @@ def eval_model(model, x_train_map, y_train_map, x_test_map, y_test_map, model_ty
 
         print(f"RMSE for {model_type} with {ticker}: {test_rmse}")
 
-        plot_singular_complete(testing_predictions, y_test, ticker, model_type)
+        plot_singular_complete(testing_predictions, y_test, ticker, model_type, sequence_length)
 
 
-def plot_singular_complete(predicted, actual, ticker, model_info):
+def average_mse_test(model, x_test_map, y_test_map):
+    total_mse = 0
+    for ticker in x_test_map:
+        x_test = torch.from_numpy(x_test_map[ticker]).type(torch.Tensor).to(device)
+        # y_test = torch.from_numpy(y_test_map[ticker]).type(torch.Tensor).to(device)
+        y_test = y_test_map[ticker]
+        testing_predictions = model(x_test)
+        testing_predictions = testing_predictions.cpu().detach().numpy()
+        total_mse += mean_squared_error(y_test[:, 0], testing_predictions[:, 0])
+
+    return total_mse / len(x_test_map)
+
+
+def plot_singular_complete(predicted, actual, ticker, model_info, sequence_length):
     scaler_predicted = copy.deepcopy(scalers[ticker])
     scaler_actual = copy.deepcopy(scalers[ticker])
     predicted = scaler_predicted.inverse_transform(predicted)
@@ -277,10 +288,11 @@ def plot_singular_complete(predicted, actual, ticker, model_info):
     plt.show()
 
 
-if __name__ == '__main__':
-    ticker_dataframes_map = get_data_frames(ticker_list, training_tickers, testing_tickers)
+def run_with_training(training, testing, use_model, sequence_length,
+                      hidden_dim, num_layers, num_epochs, lr):
+    ticker_dataframes_map = get_data_frames(tuple(ticker_list), tuple(training), tuple(testing), False)
     prices = preprocess(ticker_dataframes_map)
-    x_train, y_train, x_test, y_test = sequence_and_split(prices)
+    x_train, y_train, x_test, y_test = sequence_and_split(prices, sequence_length, False)
 
     print(f"Training tickers: {str(list(x_train.keys()))}")
     print(f"Testing tickers: {str(list(x_test.keys()))}")
@@ -288,26 +300,70 @@ if __name__ == '__main__':
     x_train_copy = copy.deepcopy(x_train)
     y_train_copy = copy.deepcopy(y_train)
 
-    LOAD_SAVED_MODEL = False
+    if use_model == 'LSTM':
+        lstm = train(LSTM(input_dim, hidden_dim, num_layers, output_dim)
+                     .to(device), x_train, y_train, num_epochs, lr)
 
-    if LOAD_SAVED_MODEL:
-        if use_model == 'LSTM':
-            lstm = LSTM().to(device)
-            lstm.load_state_dict(torch.load(f"{model_path}/lstm_multiple_ticker.pt"))
-            lstm.eval()
+        eval_and_plot_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM", sequence_length)
+    elif use_model == 'GRU':
+        gru = train(GRU(input_dim, hidden_dim, num_layers, output_dim)
+                    .to(device), x_train, y_train, num_epochs, lr)
 
-            eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+        eval_and_plot_model(gru, x_train_copy, y_train_copy, x_test, y_test, "GRU", sequence_length)
 
-        elif use_model == 'GRU':
-            gru = GRU().to(device)
-            gru.load_state_dict(torch.load(f"{model_path}/gru_multiple_ticker.pt"))
-            gru.eval()
-    else:
-        if use_model == 'LSTM':
-            lstm = train(LSTM().to(device), x_train, y_train) 
 
-            eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
-        elif use_model == 'GRU':
-            gru = train(GRU().to(device), x_train, y_train)
+def run_and_eval(training, testing, use_model, sequence_length,
+                 hidden_dim, num_layers, num_epochs, lr, verbose=False):
+    ticker_dataframes_map = get_data_frames(tuple(ticker_list), tuple(training), tuple(testing), False)
+    prices = preprocess(ticker_dataframes_map)
+    x_train, y_train, x_test, y_test = sequence_and_split(prices, sequence_length, False)
 
-            eval_model(gru, x_train_copy, y_train_copy, x_test, y_test, "GRU")
+    x_train_copy = copy.deepcopy(x_train)
+    y_train_copy = copy.deepcopy(y_train)
+
+    model = None
+    if use_model == 'LSTM':
+        model = train(LSTM(input_dim, hidden_dim, num_layers, output_dim).to(device), x_train, y_train, num_epochs, lr, verbose)
+
+    elif use_model == 'GRU':
+        model = train(GRU(input_dim, hidden_dim, num_layers, output_dim).to(device), x_train, y_train, num_epochs, lr, verbose)
+
+    avg_mse = average_mse_test(model, x_train_copy, y_train_copy)
+    return model, avg_mse
+
+
+if __name__ == '__main__':
+    run_with_training(training_tickers, testing_tickers, 'LSTM', 20, 32, 2, 100, 0.01)
+    # ticker_dataframes_map = get_data_frames(ticker_list, training_tickers, testing_tickers)
+    # prices = preprocess(ticker_dataframes_map)
+    # x_train, y_train, x_test, y_test = sequence_and_split(prices)
+    #
+    # print(f"Training tickers: {str(list(x_train.keys()))}")
+    # print(f"Testing tickers: {str(list(x_test.keys()))}")
+    #
+    # x_train_copy = copy.deepcopy(x_train)
+    # y_train_copy = copy.deepcopy(y_train)
+    #
+    # LOAD_SAVED_MODEL = False
+    #
+    # if LOAD_SAVED_MODEL:
+    #     if use_model == 'LSTM':
+    #         lstm = LSTM().to(device)
+    #         lstm.load_state_dict(torch.load(f"{model_path}/lstm_multiple_ticker.pt"))
+    #         lstm.eval()
+    #
+    #         eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+    #
+    #     elif use_model == 'GRU':
+    #         gru = GRU().to(device)
+    #         gru.load_state_dict(torch.load(f"{model_path}/gru_multiple_ticker.pt"))
+    #         gru.eval()
+    # else:
+    #     if use_model == 'LSTM':
+    #         lstm = train(LSTM().to(device), x_train, y_train)
+    #
+    #         eval_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+    #     elif use_model == 'GRU':
+    #         gru = train(GRU().to(device), x_train, y_train)
+    #
+    #         eval_model(gru, x_train_copy, y_train_copy, x_test, y_test, "GRU")
