@@ -5,11 +5,18 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+
+# enums
+CLOSING_PRICE = 'fiscal_closing_date'
+
+models_path = './models'
+
 training_split = 0.95
 test_split = 1 - training_split
-sequence_length = 5
+input_sequence_length = 4
 
-input_dim = 2
+
+input_dim = 8
 
 # nodes per layer
 hidden_dim = 32
@@ -20,6 +27,8 @@ num_epochs = 100
 
 scaler_storage = {}
 # pd.set_option('display.max_columns', 10)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class LSTM(nn.Module):
@@ -32,14 +41,14 @@ class LSTM(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim).requires_grad_()
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim, device=device).requires_grad_()
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_dim, device=device).requires_grad_()
         # out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
         out, _ = self.lstm(x, (h0.detach(), c0.detach()))
         out = self.fc(out[:, -1, :])
         return out
 
-    def save_model(self, path="lstm.pt"):
+    def save_model(self, path=f"{models_path}/lstm_advanced.pt"):
         torch.save(self.state_dict(), path)
 
 
@@ -85,59 +94,117 @@ def create_stock_dataframe(data, ticker):
     return df
 
 
-def train(model, dataframes):
-    for df in dataframes:
+def sequence_data(dataframes_map):
+    sequenced_data = dict()
+    skipped_tickers = []
+    for ticker in dataframes_map:
+        df = dataframes_map[ticker]
         testing_df = df.copy()
-        # testing_df.drop('fiscal_closing_date', inplace=True)
-        df_array =testing_df.to_numpy()
+        if len(df) <= input_sequence_length + 1:
+            skipped_tickers.append(ticker)
+            continue
+        df_array = testing_df.to_numpy()
         df_array = np.transpose(df_array)
-        data = []
-        for index in range(len(df_array[0]) - sequence_length):
+        X = []
+        y = []
+        for index in range(len(df_array[0]) - input_sequence_length):
             temp = []
             for row in df_array:
-                pass
-            data.append(df_array[''])
+                temp.append(row[index:index + input_sequence_length])
+            X.append(temp)
+            y.append(df_array[-1][index + input_sequence_length])
+        #
+        # print(df)
+        # for a in df_array:
+        #     print([*a])
+        # # print(df_array)
+        # print("\n\n DATA:", ticker)
+        # try:
+        #     for row in X[0]:
+        #         print(row)
+        # except:
+        #     print(ticker)
+        #     input()
+        # print("p2")
+        # for row in X[-1]:
+        #     print(row)
+        # print(y)
+        # print(len(X))
+        # print(len(y))
+        sequenced_data[ticker] = {
+            'X': X,
+            'y': y
+        }
 
-        print(df)
-        for a in df_array:
-            print(*a)
-        # print(df_array)
-        input()
+    print("Skipped the following tickers, not enough data:")
+    print(skipped_tickers)
+
+    return sequenced_data
 
 
-def transform_stock_data(dataframes, max_len=None):
-  """
-  Transforms a list of DataFrames containing financial ratios and close prices
-  into a 4D PyTorch tensor for a stock prediction model. Close price is
-  included as an input feature.
+def train(model, training_data, num_epochs=100):
+    for ticker in training_data:
+        temp = []
+        X_train = np.array(training_data[ticker]['X'])
+        for i in range(len(X_train)):
+            temp.append(np.array(X_train[i].transpose()))
+        # print(np.array(training_data[ticker]['X'][0]).transpose())
+        # print(np.array(training_data[ticker]['X']).shape)
+        # print(len(training_data[ticker]['X'][0]))
+        # input()
+        # X_train = torch.from_numpy(np.array(training_data[ticker]['X'])).type(torch.Tensor).to(device)
+        X_train = torch.from_numpy(np.array(temp)).type(torch.Tensor).to(device)
+        y_train = torch.from_numpy(np.array(training_data[ticker]['y'])).type(torch.Tensor).to(device)
 
-  Args:
-      dataframes (list): A list of Pandas DataFrames, where each DataFrame
-          represents data for a single stock.
-      max_len (int, optional): Maximum sequence length for padding. If None,
-          the maximum length among all DataFrames is used.
+        # print(X_train.shape)
+        # print(y_train.shape)
+        # input()
 
-  Returns:
-      torch.Tensor: A 4D PyTorch tensor with shape
-          (num_stocks, num_timesteps, num_features, sequence_length).
-  """
+        criterion = torch.nn.MSELoss(reduction='mean')
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        for t in range(num_epochs):
+            prediction = model(X_train)
+            prediction = prediction.squeeze(1)
 
-  all_data = []  # Store features (including close price) for all stocks
-  max_len = 0
+            loss = criterion(prediction, y_train)
 
-  for df in dataframes:
-    features = df.values  # All columns are now input features
-    max_len = max(max_len, len(features))
-    all_data.append(features)
+            print(f"Epoch: {t}, MSE: {loss.item()}")
 
-  # Pad sequences to same length
-  padded_data = [np.pad(seq, ((0, max_len - len(seq)), (0, 0)), mode='constant', constant_values=0) for seq in all_data]
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+    model.save_model()
+    return model
 
-  # Convert to NumPy array and PyTorch tensor
-  data = np.stack(padded_data)
-  tensor_data = torch.from_numpy(data)
 
-  return tensor_data
+def eval_model_and_plot(model, testing_data):
+    for ticker in testing_data:
+        pass
+
+
+def train_ratio_model(testing_tickers):
+    data = get_all_ratios()
+    tickers_dataframes_map = dict()
+    input_size = 0
+    for ticker in data:
+        df = create_stock_dataframe(data, ticker)
+        if df is None:
+            continue
+        tickers_dataframes_map[ticker] = df
+        input_size = len(df.columns)
+
+    testing_dfs = dict()
+    training_dfs = dict()
+    for ticker in tickers_dataframes_map:
+        if ticker in testing_tickers:
+            testing_dfs[ticker] = tickers_dataframes_map[ticker]
+        else:
+            training_dfs[ticker] = tickers_dataframes_map[ticker]
+
+    testing_X_y = sequence_data(testing_dfs)
+    training_X_y = sequence_data(training_dfs)
+
+    train(LSTM(input_dim=8).to(device), training_X_y)
 
 
 # Tips for guiding LSTM to focus on predicting the closing price:
@@ -148,14 +215,4 @@ def transform_stock_data(dataframes, max_len=None):
 # 4. attention mechanisms
 # 5.
 if __name__ == '__main__':
-    data = get_all_ratios()
-    dataframes = []
-    for ticker in data:
-        df = create_stock_dataframe(data, ticker)
-        if df is None:
-            continue
-        dataframes.append(df)
-
-    train(LSTM(), dataframes)
-
-    # tensors = transform_stock_data(dataframes)
+    train_ratio_model(['AAPL', 'META', 'NVDA'])
