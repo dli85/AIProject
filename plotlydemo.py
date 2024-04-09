@@ -21,6 +21,11 @@ import streamlit as st
 
 st.title('Predicting Stocks using RNNs')
 
+target_ticker = st.text_input('Enter the ticker you want to predict', 'AAPL')
+
+print("target ticker")
+print(target_ticker)
+
 
 def plotly_plot_single(predicted, actual, ticker, model_info):
     scaler_predicted = copy.deepcopy(mtm.scalers[ticker])
@@ -80,7 +85,8 @@ ticker_list = list()
 # training_tickers = ['AAPL', 'MFST', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
 training_tickers = list()
 # testing_tickers = ['CL', 'KVYO', 'GS', 'NKE']
-testing_tickers = ['NKE']
+# testing_tickers = ['NKE']
+testing_tickers = [target_ticker]
 
 # Using saved model files
 lstm_model = mtm.LSTM()
@@ -102,19 +108,20 @@ x_train_copy = copy.deepcopy(x_train)
 y_train_copy = copy.deepcopy(y_train)
 
 ret = eval_model(lstm_model, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+print(ret)
 ret = list(ret.items())[0][1]
 
-print(f"RMSE for LSTM: {ret[2]}")
-f = plotly_plot_single(ret[0], ret[1], 'NKE', 'LSTM')
+# print(f"RMSE for LSTM: {ret[2]}")
+f = plotly_plot_single(ret[0], ret[1], target_ticker, 'LSTM')
 st.plotly_chart(f, use_container_width=False)
 # fig.show()
 
 
 # print(ret.keys())
 # ret = ret['NKE']
-print(len(ret[0]))
-print(len(ret[1]))
-print(ret[2])
+# print(len(ret[0]))
+# print(len(ret[1]))
+# print(ret[2])
 
 
 
