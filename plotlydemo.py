@@ -22,6 +22,7 @@ import streamlit as st
 st.title('Predicting Stocks using RNNs')
 
 target_ticker = st.text_input('Enter the ticker you want to predict', 'AAPL')
+target_ticker = target_ticker.upper()
 
 print("target ticker")
 print(target_ticker)
@@ -33,7 +34,7 @@ def plotly_plot_single(predicted, actual, ticker, model_info):
     predicted = scaler_predicted.inverse_transform(predicted)
     actual = scaler_actual.inverse_transform(actual)
 
-    dates_x = mtm.dates[ticker]
+    dates_x = mtm.dates[ticker].copy()
     dates_x.reverse()
     dates_x = dates_x[mtm.sequence_length:]
     dates_x = pd.to_datetime(dates_x)
@@ -78,59 +79,41 @@ def eval_model(model, x_train_map, y_train_map, x_test_map, y_test_map, model_ty
     
     return ret
 
+def render_streamlit_page():
+    # These are just there to make the code work lol
+    ticker_list = list()
+    training_tickers = list()
+    testing_tickers = [target_ticker]
 
-# data things needed for model and evaluation
-# ticker_list = ['AAPL', 'MFST', 'GOOGL', 'NVDA', 'META', 'UBER', 'TLSA', 'ORCL', 'CRM', 'NFLX']
-ticker_list = list()
-# training_tickers = ['AAPL', 'MFST', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
-training_tickers = list()
-# testing_tickers = ['CL', 'KVYO', 'GS', 'NKE']
-# testing_tickers = ['NKE']
-testing_tickers = [target_ticker]
+    # Using saved model files
+    lstm_model = mtm.LSTM()
+    lstm_model.load_state_dict(torch.load('./models/lstm_multiple_ticker2.pt', map_location=torch.device('cpu')))
+    lstm_model.eval()
 
-# Using saved model files
-lstm_model = mtm.LSTM()
-lstm_model.load_state_dict(torch.load('lstm_multiple_ticker.pt'))
-lstm_model.eval()
+    gru_model = mtm.GRU()
+    gru_model.load_state_dict(torch.load('./models/gru_multiple_ticker.pt', map_location=torch.device('cpu')))
+    gru_model.eval()
 
-gru_model = mtm.GRU()
-gru_model.load_state_dict(torch.load('gru_multiple_ticker.pt'))
-gru_model.eval()
+    ticker_dataframes_map = mtm.get_data_frames(ticker_list, training_tickers, testing_tickers)
+    prices = mtm.preprocess(ticker_dataframes_map)
+    x_train, y_train, x_test, y_test = mtm.sequence_and_split(prices)
+    x_train_copy = copy.deepcopy(x_train)
+    y_train_copy = copy.deepcopy(y_train)
 
-ticker_dataframes_map = mtm.get_data_frames(ticker_list, training_tickers, testing_tickers)
-prices = mtm.preprocess(ticker_dataframes_map)
-x_train, y_train, x_test, y_test = mtm.sequence_and_split(prices)
+    ret = eval_model(lstm_model, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
+    ret_gru = eval_model(gru_model, x_train_copy, y_train_copy, x_test, y_test, "GRU")
 
-print(f"Training tickers: {str(list(x_train.keys()))}")
-print(f"Testing tickers: {str(list(x_test.keys()))}")
+    ret = list(ret.items())[0][1]
+    ret_gru = list(ret_gru.items())[0][1]
 
-x_train_copy = copy.deepcopy(x_train)
-y_train_copy = copy.deepcopy(y_train)
+    f = plotly_plot_single(ret[0], ret[1], target_ticker, 'LSTM')
+    st.plotly_chart(f, use_container_width=False)
+    st.write(f"RMSE for LSTM for ticker {target_ticker}: {ret[2]} USD")
 
-ret = eval_model(lstm_model, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
-print(ret)
-ret = list(ret.items())[0][1]
-
-# print(f"RMSE for LSTM: {ret[2]}")
-f = plotly_plot_single(ret[0], ret[1], target_ticker, 'LSTM')
-st.plotly_chart(f, use_container_width=False)
-# fig.show()
+    f2 = plotly_plot_single(ret_gru[0], ret_gru[1], target_ticker, 'GRU')
+    st.plotly_chart(f2, use_container_width=False)
+    st.write(f"RMSE for GRU for ticker {target_ticker}: {ret_gru[2]} USD")
 
 
-# print(ret.keys())
-# ret = ret['NKE']
-# print(len(ret[0]))
-# print(len(ret[1]))
-# print(ret[2])
-
-
-
-
-
-
-
-
-
-# df = px.data.gapminder().query("country=='India'")
-# fig = px.line(df, x="year", y="lifeExp", title='Life expectancy in Canada')
-# fig.show()
+if __name__ == "__main__":
+    render_streamlit_page()
