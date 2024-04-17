@@ -26,7 +26,8 @@ training_split = 0.8
 test_split = 1 - training_split
 # If randomize testing is false, use existing training and testing list
 training_tickers = ['MSFT', 'GOOGL', 'META', 'TLSA', 'ORCL', 'CRM', 'NFLX']
-testing_tickers = ['NVDA', 'UBER', 'AAPL']
+# testing_tickers = ['NVDA', 'UBER', 'AAPL']
+testing_tickers = ['HUBS']
 
 scalers = {}
 dates = {}
@@ -82,7 +83,7 @@ class GRU(nn.Module):
         torch.save(self.state_dict(), path)
 
 
-@lru_cache(maxsize=None)
+# @lru_cache(maxsize=None)
 def get_data_frames(tickers, existing_training, existing_testing, randomize):
     if not randomize:
         tickers = existing_training + existing_testing
@@ -252,7 +253,7 @@ def plot_singular_complete(predicted, actual, ticker, model_info, sequence_lengt
     sns.lineplot(data=df, x=df.index, y='Predicted price', label='Predicted')
 
     n = len(dates_x)
-    step_size = max(n // 10, 1)  # Divide into roughly 4 sections
+    step_size = max(n // 4, 1)  # Divide into roughly 4 sections
     display_dates = dates_x[::-step_size]
     plt.xticks(display_dates)
 
@@ -276,7 +277,7 @@ def plot_singular_complete(predicted, actual, ticker, model_info, sequence_lengt
     sns.lineplot(data=df_recent, x=df_recent.index, y='Predicted price', label='Predicted')
 
     n = len(dates_x_recent)
-    step_size = max(n // 10, 1)
+    step_size = max(n // 4, 1)
     display_dates_recent = dates_x_recent[::-step_size]
     plt.xticks(display_dates_recent)
 
@@ -304,10 +305,20 @@ def run_with_training(training, testing, use_model, sequence_length,
         lstm = train(LSTM(input_dim, hidden_dim, num_layers, output_dim)
                      .to(device), x_train, y_train, num_epochs, lr)
 
+        # UNCOMMENT FOR LOADING SAVED MODEL
+        # lstm = LSTM(input_dim, hidden_dim, num_layers, output_dim).to(device)
+        # lstm.load_state_dict(torch.load(f"{model_path}/lstm_multiple_ticker.pt"))
+        # lstm.eval()
+
         eval_and_plot_model(lstm, x_train_copy, y_train_copy, x_test, y_test, "LSTM", sequence_length)
     elif use_model == 'GRU':
-        gru = train(GRU(input_dim, hidden_dim, num_layers, output_dim)
-                    .to(device), x_train, y_train, num_epochs, lr)
+        # gru = train(GRU(input_dim, hidden_dim, num_layers, output_dim)
+        #             .to(device), x_train, y_train, num_epochs, lr)
+        
+        # UNCOMMENT FOR LOADING SAVED MODEL
+        gru = GRU(input_dim, hidden_dim, num_layers, output_dim).to(device)
+        gru.load_state_dict(torch.load(f"{model_path}/gru_multiple_ticker.pt", map_location=torch.device('cpu')))
+        gru.eval()
 
         eval_and_plot_model(gru, x_train_copy, y_train_copy, x_test, y_test, "GRU", sequence_length)
 
@@ -333,7 +344,7 @@ def run_and_eval(training, testing, use_model, sequence_length,
 
 
 if __name__ == '__main__':
-    run_with_training(training_tickers, testing_tickers, 'LSTM', 20, 32, 2, 100, 0.01)
+    run_with_training(training_tickers, testing_tickers, 'GRU', 20, 32, 2, 100, 0.01)
     # ticker_dataframes_map = get_data_frames(ticker_list, training_tickers, testing_tickers)
     # prices = preprocess(ticker_dataframes_map)
     # x_train, y_train, x_test, y_test = sequence_and_split(prices)

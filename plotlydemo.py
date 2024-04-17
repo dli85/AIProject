@@ -27,6 +27,11 @@ target_ticker = target_ticker.upper()
 print("target ticker")
 print(target_ticker)
 
+INPUT_DIM = 1
+HIDDEN_DIM = 32
+NUM_LAYERS = 2
+OUTPUT_DIM = 1
+SEQ_LENGTH = 20
 
 def plotly_plot_single(predicted, actual, ticker, model_info):
     scaler_predicted = copy.deepcopy(mtm.scalers[ticker])
@@ -36,7 +41,7 @@ def plotly_plot_single(predicted, actual, ticker, model_info):
 
     dates_x = mtm.dates[ticker].copy()
     dates_x.reverse()
-    dates_x = dates_x[mtm.sequence_length:]
+    dates_x = dates_x[SEQ_LENGTH:]
     dates_x = pd.to_datetime(dates_x)
 
     df = pd.DataFrame({'Actual price': actual.flatten(),
@@ -86,22 +91,29 @@ def render_streamlit_page():
     testing_tickers = [target_ticker]
 
     # Using saved model files
-    lstm_model = mtm.LSTM()
+    lstm_model = mtm.LSTM(INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM)
     lstm_model.load_state_dict(torch.load('./models/lstm_multiple_ticker2.pt', map_location=torch.device('cpu')))
     lstm_model.eval()
 
-    gru_model = mtm.GRU()
+    gru_model = mtm.GRU(INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM)
     gru_model.load_state_dict(torch.load('./models/gru_multiple_ticker.pt', map_location=torch.device('cpu')))
     gru_model.eval()
 
-    ticker_dataframes_map = mtm.get_data_frames(ticker_list, training_tickers, testing_tickers)
+    ticker_dataframes_map = mtm.get_data_frames(tuple(ticker_list), tuple(training_tickers), tuple(testing_tickers), False)
     prices = mtm.preprocess(ticker_dataframes_map)
-    x_train, y_train, x_test, y_test = mtm.sequence_and_split(prices)
+    print("-------------------")
+    print("prices")
+    print(prices)
+    print("-------------------")
+    x_train, y_train, x_test, y_test = mtm.sequence_and_split(prices, SEQ_LENGTH, False)
     x_train_copy = copy.deepcopy(x_train)
     y_train_copy = copy.deepcopy(y_train)
 
     ret = eval_model(lstm_model, x_train_copy, y_train_copy, x_test, y_test, "LSTM")
     ret_gru = eval_model(gru_model, x_train_copy, y_train_copy, x_test, y_test, "GRU")
+
+    print("ret")
+    print(ret)
 
     ret = list(ret.items())[0][1]
     ret_gru = list(ret_gru.items())[0][1]
