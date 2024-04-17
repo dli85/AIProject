@@ -1,2 +1,4 @@
 alpha-vantage==2.3.1
 streamlit
+seaborn
+watchdog
